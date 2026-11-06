@@ -73,7 +73,7 @@
             ) : [];
 
             const buyProduct = (name) => {
-                const msg = encodeURIComponent(`Hola ${settings.brandTitle}, deseo adquirir el perfume ${name}. ¿Tienen stock disponible? Mi pago será por Yape/Plin.`);
+                const msg = encodeURIComponent(`Hola ${settings.brandTitle}, deseo adquirir el perfume ${name}. ¿Tienen stock disponible en Lima? Mi pago será por Yape/Plin.`);
                 window.open(`https://wa.me/${settings.whatsapp}?text=${msg}`, '_blank');
             };
 
@@ -88,7 +88,7 @@
                             <span className="text-white"><i className="fas fa-mobile-alt gold-text mr-2"></i>Yape ({settings.yapeNumber})</span>
                         </div>
 
-                        {/* SECCIÓN DE MÉTODOS DE PAGO Y CONFIANZA */}
+                        {/* SECCIÓN DE MÉTODOS DE PAGO Y CONFIANZA (EXCLUSIVO LIMA) */}
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-4 max-w-4xl mx-auto px-4">
                             <div className="bg-[#101010]/90 border border-yellow-600/30 rounded-xl p-4 flex items-center space-x-4 shadow-lg">
                                 <div className="w-12 h-12 rounded-full bg-purple-900/40 border border-purple-500/50 flex items-center justify-center text-purple-400 text-xl flex-shrink-0">
@@ -110,11 +110,11 @@
                             </div>
                             <div className="bg-[#101010]/90 border border-yellow-600/30 rounded-xl p-4 flex items-center space-x-4 shadow-lg">
                                 <div className="w-12 h-12 rounded-full bg-yellow-900/40 border border-yellow-500/50 flex items-center justify-center gold-text text-xl flex-shrink-0">
-                                    <i className="fas fa-shipping-fast"></i>
+                                    <i className="fas fa-motorcycle"></i>
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-white font-bold text-sm">Delivery Seguro</h4>
-                                    <p className="text-gray-400 text-xs">Envíos a todo Lima y provincias</p>
+                                    <h4 className="text-white font-bold text-sm">Delivery en Lima</h4>
+                                    <p className="text-gray-400 text-xs">Entregas seguras en toda la ciudad</p>
                                 </div>
                             </div>
                         </div>
