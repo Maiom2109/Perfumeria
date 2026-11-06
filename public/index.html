@@ -4,9 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARENAS | Perfumes Árabes Originales en Lima - Lattafa, Rasasi y Más</title>
-    <!-- Etiqueta de verificación de Google Search Console -->
     <meta name="google-site-verification" content="b-YjZAn1x0ai3hTZgX6fH4z_e5kpKlsoQGAz4tTgUFk" />
-    
     <meta name="description" content="Venta de perfumes árabes originales en Lima, Perú. Encuentra Khamrah, Hawas Ice, 9PM, Asad y decants. Envíos seguros a todo Lima y pago por Yape.">
     <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes">
 
@@ -83,7 +81,7 @@
 
                     <main className="flex-grow p-8 md:p-12 max-w-7xl mx-auto w-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                            {perfumes.map(p => (
+                            {perfumes && perfumes.map(p => (
                                 <div key={p.id} className="perfume-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl">
                                     <div className="h-72 overflow-hidden relative bg-black">
                                         <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-transparent to-transparent opacity-60 z-10"></div>
