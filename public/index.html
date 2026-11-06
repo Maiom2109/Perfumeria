@@ -9,7 +9,7 @@
     <meta name="google-site-verification" content="b-YjZAn1x0ai3hTZgX6fH4z_e5kpKlsoQGAz4tTgUFk" />
     
     <meta name="description" content="Venta de perfumes árabes originales en Lima, Perú. Encuentra Khamrah, Hawas Ice, 9PM, Asad y decants. Envíos seguros a todo Lima y pago por Yape.">
-    <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes">
+    <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes, Lattafa Lima, Asad Lattafa">
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -43,7 +43,6 @@
             box-shadow: 0 15px 30px -10px rgba(212, 175, 55, 0.25);
         }
 
-        /* MARCO DORADO SUTIL Y SOMBRA DIFUMINADA PARA LAS IMÁGENES */
         .perfume-img-container {
             border: 1px solid rgba(212, 175, 55, 0.3);
             box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 10px 25px -5px rgba(0, 0, 0, 0.9);
@@ -382,6 +381,29 @@
                         )}
 
                     </div>
+
+                    {/* SECCIÓN SEO: PREGUNTAS FRECUENTES SOBRE PERFUMES ÁRABES EN LIMA */}
+                    <section className="max-w-5xl mx-auto px-6 py-12 border-t border-gray-900 mt-12 w-full">
+                        <h2 className="text-3xl font-bold gold-text text-center mb-8 tracking-wider">Preguntas Frecuentes sobre Perfumes Árabes en Lima</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                            <div className="bg-[#101010] border border-gray-800 p-6 rounded-xl shadow-md">
+                                <h3 className="text-white font-bold mb-2"><i className="fas fa-check-circle gold-text mr-2"></i>¿Los perfumes árabes son 100% originales?</h3>
+                                <p className="text-gray-400 leading-relaxed">Sí, en ARENAS trabajamos exclusivamente con casas importadas originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima.</p>
+                            </div>
+                            <div className="bg-[#101010] border border-gray-800 p-6 rounded-xl shadow-md">
+                                <h3 className="text-white font-bold mb-2"><i className="fas fa-wallet gold-text mr-2"></i>¿Cómo se realizan los pagos?</h3>
+                                <p className="text-gray-400 leading-relaxed">Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda ({settings.yapeNumber}).</p>
+                            </div>
+                            <div className="bg-[#101010] border border-gray-800 p-6 rounded-xl shadow-md">
+                                <h3 className="text-white font-bold mb-2"><i className="fas fa-motorcycle gold-text mr-2"></i>¿Cómo funciona el delivery en Lima?</h3>
+                                <p className="text-gray-400 leading-relaxed">Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta.</p>
+                            </div>
+                            <div className="bg-[#101010] border border-gray-800 p-6 rounded-xl shadow-md">
+                                <h3 className="text-white font-bold mb-2"><i className="fas fa-star gold-text mr-2"></i>¿Qué marcas de perfumes árabes recomiendan?</h3>
+                                <p className="text-gray-400 leading-relaxed">Entre los favoritos del público se encuentran Khamrah y Asad de Lattafa, Hawas de Rasasi y 9PM de Afnan, ideales por su gran fijación y proyección.</p>
+                            </div>
+                        </div>
+                    </section>
 
                     {/* MODAL / VISOR DE BOLETA DIGITAL ANTES DE ENVIAR */}
                     {showReceiptModal && (
