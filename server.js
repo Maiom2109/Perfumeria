@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const fetch = require('node-fetch');
 const path = require('path');
 
 const app = express();
@@ -47,7 +46,7 @@ app.post('/api/data', async (req, res) => {
     }
     
     try {
-        // 1. Obtener el SHA actual del archivo data.json en GitHub (requisito obligatorio de la API)
+        // 1. Obtener el SHA actual del archivo data.json en GitHub
         const getResponse = await fetch(`https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`, {
             headers: { 
                 'Authorization': `token ${GITHUB_TOKEN}`, 
@@ -95,5 +94,5 @@ app.post('/api/data', async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-    console.log(`Servidor Backend corriendo en el puerto ${PORT}`);
+    console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
