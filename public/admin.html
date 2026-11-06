@@ -8,94 +8,159 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body { background-color: #0a0a0a; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
+        .gold-text { color: #d4af37; }
+        .gold-bg { background-color: #d4af37; color: #0a0a0a; }
+    </style>
 </head>
-<body class="bg-gray-100 text-gray-900 font-sans">
+<body>
     <div id="root"></div>
     <script type="text/babel">
         const { useState, useEffect } = React;
 
         const AdminPanel = () => {
-            const [perfumes, setPerfumes] = useState([]);
+            const [storeData, setStoreData] = useState(null);
             const [password, setPassword] = useState('');
             const [isAuth, setIsAuth] = useState(false);
 
             useEffect(() => {
-                fetch('/api/perfumes').then(res => res.json()).then(data => setPerfumes(data));
+                fetch('/api/data')
+                    .then(res => res.json())
+                    .then(data => setStoreData(data))
+                    .catch(err => console.error(err));
             }, []);
 
             const handleSave = () => {
-                fetch('/api/perfumes', {
+                fetch('/api/data', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password, perfumes })
+                    body: JSON.stringify({ password, data: storeData })
                 })
                 .then(res => res.json())
-                .then(data => {
-                    if (data.error) alert(data.error);
-                    else alert("¡Catálogo actualizado con éxito! Los cambios ya están en internet.");
+                .then(resData => {
+                    if (resData.error) alert(resData.error);
+                    else alert("¡Cambios guardados con éxito en internet!");
                 });
             };
 
-            const handleChange = (id, field, value) => {
-                setPerfumes(perfumes.map(p => p.id === id ? { ...p, [field]: value } : p));
+            const handleSettingChange = (field, value) => {
+                setStoreData({
+                    ...storeData,
+                    settings: { ...storeData.settings, [field]: value }
+                });
+            };
+
+            const handlePerfumeChange = (id, field, value) => {
+                const updatedPerfumes = storeData.perfumes.map(p => p.id === id ? { ...p, [field]: value } : p);
+                setStoreData({ ...storeData, perfumes: updatedPerfumes });
             };
 
             const addPerfume = () => {
-                const newId = perfumes.length > 0 ? Math.max(...perfumes.map(p => p.id)) + 1 : 1;
-                setPerfumes([...perfumes, { id: newId, name: "Nuevo Perfume", price: 0, desc: "Descripción", img: "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80" }]);
+                const newId = storeData.perfumes.length > 0 ? Math.max(...storeData.perfumes.map(p => p.id)) + 1 : 1;
+                const newPerfumes = [...storeData.perfumes, { id: newId, name: "Nuevo Perfume", price: 0, desc: "Descripción", img: "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80" }];
+                setStoreData({ ...storeData, perfumes: newPerfumes });
             };
 
             const removePerfume = (id) => {
-                setPerfumes(perfumes.filter(p => p.id !== id));
+                const filtered = storeData.perfumes.filter(p => p.id !== id);
+                setStoreData({ ...storeData, perfumes: filtered });
             };
 
             if (!isAuth) {
                 return (
-                    <div className="flex h-screen items-center justify-center bg-gray-900">
-                        <div className="bg-white p-8 rounded-lg shadow-xl text-center">
-                            <h2 className="text-2xl font-bold mb-4">Acceso Administrativo</h2>
-                            <input type="password" placeholder="Contraseña" className="border p-2 w-full mb-4 rounded" 
+                    <div className="flex h-screen items-center justify-center bg-black">
+                        <div className="bg-[#111] border border-gray-800 p-8 rounded-xl shadow-2xl text-center w-96">
+                            <h2 className="text-2xl font-bold mb-6 gold-text tracking-widest">ARENAS ADMIN</h2>
+                            <input type="password" placeholder="Contraseña" className="border border-gray-700 bg-black text-white p-3 w-full mb-4 rounded text-center" 
                                 value={password} onChange={e => setPassword(e.target.value)} />
                             <button onClick={() => { if(password === 'arenas2026') setIsAuth(true); else alert('Contraseña incorrecta'); }} 
-                                className="bg-yellow-600 text-white px-6 py-2 rounded font-bold w-full">Ingresar</button>
-                            <p className="text-xs text-gray-500 mt-4">Pista: arenas2026</p>
+                                className="w-full gold-bg py-3 rounded font-bold uppercase tracking-wider hover:bg-yellow-600 transition">Ingresar</button>
                         </div>
                     </div>
                 );
             }
 
+            if (!storeData) return <div className="text-center mt-20 gold-text text-xl">Cargando panel...</div>;
+
             return (
-                <div className="p-8 max-w-5xl mx-auto">
-                    <div className="flex justify-between items-center mb-8">
-                        <h1 className="text-3xl font-bold">Panel de Control - ARENAS</h1>
-                        <a href="/" className="text-blue-600 underline">Ver Tienda</a>
+                <div className="p-8 max-w-7xl mx-auto">
+                    <div className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
+                        <h1 className="text-3xl font-bold gold-text tracking-wider">PANEL DE CONTROL - ARENAS</h1>
+                        <div className="space-x-4">
+                            <a href="/" target="_blank" className="text-gray-400 hover:text-white underline text-sm">Ver Tienda <i class="fas fa-external-link-alt ml-1"></i></a>
+                            <button onClick={handleSave} className="gold-bg px-6 py-2 rounded font-bold hover:bg-yellow-600 transition shadow-lg">GUARDAR TODO</button>
+                        </div>
                     </div>
-                    
-                    <div className="bg-white p-6 rounded-lg shadow-lg">
-                        <table className="w-full text-left border-collapse">
-                            <thead>
-                                <tr className="bg-gray-200">
-                                    <th className="p-3 border">Nombre del Perfume</th>
-                                    <th className="p-3 border">Precio (S/)</th>
-                                    <th className="p-3 border">Descripción</th>
-                                    <th className="p-3 border">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {perfumes.map(p => (
-                                    <tr key={p.id} className="border-b">
-                                        <td className="p-3 border"><input className="w-full border p-1" value={p.name} onChange={e => handleChange(p.id, 'name', e.target.value)} /></td>
-                                        <td className="p-3 border"><input type="number" className="w-full border p-1" value={p.price} onChange={e => handleChange(p.id, 'price', e.target.value)} /></td>
-                                        <td className="p-3 border"><input className="w-full border p-1" value={p.desc} onChange={e => handleChange(p.id, 'desc', e.target.value)} /></td>
-                                        <td className="p-3 border text-center"><button onClick={() => removePerfume(p.id)} className="bg-red-500 text-white px-3 py-1 rounded">Eliminar</button></td>
+
+                    {/* SECCIÓN 1: CONFIGURACIÓN GENERAL */}
+                    <div className="bg-[#111] border border-gray-800 p-6 rounded-xl mb-10 shadow-lg">
+                        <h2 className="text-xl font-bold mb-4 text-white"><i className="fas fa-sliders-h gold-text mr-2"></i> Configuración General de la Tienda</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Título de Marca</label>
+                                <input className="w-full bg-black border border-gray-700 p-2 rounded text-white" value={storeData.settings.brandTitle} onChange={e => handleSettingChange('brandTitle', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Subtítulo</label>
+                                <input className="w-full bg-black border border-gray-700 p-2 rounded text-white" value={storeData.settings.brandSubtitle} onChange={e => handleSettingChange('brandSubtitle', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Número de WhatsApp</label>
+                                <input className="w-full bg-black border border-gray-700 p-2 rounded text-white" value={storeData.settings.whatsapp} onChange={e => handleSettingChange('whatsapp', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Número Yape</label>
+                                <input className="w-full bg-black border border-gray-700 p-2 rounded text-white" value={storeData.settings.yapeNumber} onChange={e => handleSettingChange('yapeNumber', e.target.value)} />
+                            </div>
+                            <div>
+                                <label className="block text-xs text-gray-400 mb-1 uppercase tracking-wider">Texto de Envío / Logística</label>
+                                <input className="w-full bg-black border border-gray-700 p-2 rounded text-white" value={storeData.settings.shippingText} onChange={e => handleSettingChange('shippingText', e.target.value)} />
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* SECCIÓN 2: GESTIÓN DE PERFUMES */}
+                    <div className="bg-[#111] border border-gray-800 p-6 rounded-xl shadow-lg">
+                        <div className="flex justify-between items-center mb-6">
+                            <h2 className="text-xl font-bold text-white"><i className="fas fa-wine-bottle gold-text mr-2"></i> Catálogo de Perfumes ({storeData.perfumes.length})</h2>
+                            <button onClick={addPerfume} className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm font-bold transition">+ Agregar Perfume</button>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                            <table className="w-full text-left border-collapse min-w-[800px]">
+                                <thead>
+                                    <tr className="bg-gray-900 text-gray-400 text-xs uppercase tracking-wider">
+                                        <th className="p-3 border border-gray-800">Foto Previa</th>
+                                        <th className="p-3 border border-gray-800">Nombre</th>
+                                        <th className="p-3 border border-gray-800">Precio (S/)</th>
+                                        <th className="p-3 border border-gray-800">Descripción</th>
+                                        <th className="p-3 border border-gray-800">Enlace de Imagen (URL)</th>
+                                        <th className="p-3 border border-gray-800 text-center">Acciones</th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        
-                        <div className="mt-6 flex justify-between">
-                            <button onClick={addPerfume} className="bg-blue-600 text-white px-4 py-2 rounded font-bold">+ Agregar Perfume</button>
-                            <button onClick={handleSave} className="bg-green-600 text-white px-6 py-2 rounded font-bold text-lg shadow-lg hover:bg-green-700">GUARDAR CAMBIOS</button>
+                                </thead>
+                                <tbody>
+                                    {storeData.perfumes.map(p => (
+                                        <tr key={p.id} className="border-b border-gray-800 hover:bg-black">
+                                            <td className="p-3 border border-gray-800 text-center">
+                                                <img src={p.img} alt="" className="w-10 h-10 object-cover rounded mx-auto border border-gray-700" />
+                                            </td>
+                                            <td className="p-3 border border-gray-800"><input className="w-full bg-black border border-gray-700 p-1 text-white rounded text-sm" value={p.name} onChange={e => handlePerfumeChange(p.id, 'name', e.target.value)} /></td>
+                                            <td className="p-3 border border-gray-800"><input type="number" className="w-24 bg-black border border-gray-700 p-1 text-white rounded text-sm" value={p.price} onChange={e => handlePerfumeChange(p.id, 'price', Number(e.target.value))} /></td>
+                                            <td className="p-3 border border-gray-800"><input className="w-full bg-black border border-gray-700 p-1 text-white rounded text-sm" value={p.desc} onChange={e => handlePerfumeChange(p.id, 'desc', e.target.value)} /></td>
+                                            <td className="p-3 border border-gray-800"><input className="w-full bg-black border border-gray-700 p-1 text-gray-400 rounded text-xs" value={p.img} onChange={e => handlePerfumeChange(p.id, 'img', e.target.value)} /></td>
+                                            <td className="p-3 border border-gray-800 text-center">
+                                                <button onClick={() => removePerfume(p.id)} className="bg-red-600 hover:bg-red-700 text-white px-3 py-1 rounded text-xs font-bold transition">Eliminar</button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="mt-6 flex justify-end">
+                            <button onClick={handleSave} className="gold-bg px-8 py-3 rounded font-bold text-lg hover:bg-yellow-600 transition shadow-lg">GUARDAR TODO</button>
                         </div>
                     </div>
                 </div>
