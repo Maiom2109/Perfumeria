@@ -3,8 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    
-    <!-- ETIQUETAS SEO: Esto es lo que lee Google para posicionarte -->
     <title>ARENAS | Perfumes Árabes Originales en Lima - Lattafa, Rasasi y Más</title>
     <meta name="description" content="Venta de perfumes árabes originales en Lima, Perú. Encuentra Khamrah, Hawas Ice, 9PM, Asad y decants. Envíos seguros a todo Lima y pago por Yape.">
     <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes">
@@ -18,7 +16,6 @@
         body { background-color: #050505; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
         .gold-text { color: #d4af37; }
         .gold-bg { background-color: #d4af37; color: #0a0a0a; }
-        
         .perfume-card {
             transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
             position: relative;
@@ -57,10 +54,10 @@
                 fetch('/api/data')
                     .then(res => res.json())
                     .then(data => setStoreData(data))
-                    .catch(err => console.error(err));
+                    .catch(err => console.error("Error al cargar datos:", err));
             }, []);
 
-            if (!storeData) return <div className="min-h-screen flex items-center justify-center text-2xl gold-text">Cargando tienda...</div>;
+            if (!storeData) return <div className="min-h-screen flex items-center justify-center text-2xl gold-text">Cargando tienda ARENAS...</div>;
 
             const { settings, perfumes } = storeData;
 
@@ -92,7 +89,7 @@
                                     </div>
                                     <div className="p-6 flex-grow flex flex-col justify-between relative z-20">
                                         <div>
-                                            <h3 className="text-2xl font-bold mb-2 tracking-wide text-white group-hover:text-yellow-400 transition">{p.name}</h3>
+                                            <h3 className="text-2xl font-bold mb-2 tracking-wide text-white">{p.name}</h3>
                                             <p className="perfume-desc text-gray-400 text-sm mb-6 leading-relaxed">{p.desc}</p>
                                         </div>
                                         <div>
