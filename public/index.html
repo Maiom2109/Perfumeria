@@ -15,6 +15,8 @@
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <!-- Librería para convertir la boleta en imagen -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         body { background-color: #050505; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
@@ -60,7 +62,7 @@
 <body>
     <div id="root"></div>
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useRef } = React;
 
         const App = () => {
             const [storeData, setStoreData] = useState(null);
@@ -68,6 +70,8 @@
             const [selectedBrand, setSelectedBrand] = useState('Todos');
             const [cart, setCart] = useState([]);
             const [isCartOpen, setIsCartOpen] = useState(false);
+            const [showReceiptModal, setShowReceiptModal] = useState(false);
+            const receiptRef = useRef(null);
 
             useEffect(() => {
                 fetch('/api/data')
@@ -117,28 +121,46 @@
                 return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
             };
 
-            // MENSAJE ESTILO BOLETA PARA WHATSAPP
-            const checkoutWhatsApp = () => {
+            // Función para descargar la boleta como imagen y abrir WhatsApp
+            const downloadReceiptAndCheckout = async () => {
                 if (cart.length === 0) return;
-                
-                let orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name}%0A   Subtotal: S/ ${item.price * item.qty}.00`).join('%0A');
+
+                // 1. Generar imagen de la boleta
+                if (receiptRef.current) {
+                    try {
+                        const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#121212', scale: 2 });
+                        const image = canvas.toDataURL("image/png");
+                        
+                        // Crear enlace temporal para descargar la imagen automáticamente
+                        const link = document.createElement('a');
+                        link.href = image;
+                        link.download = `Boleta_ARENAS_${Date.now()}.png`;
+                        link.click();
+                    } catch (error) {
+                        console.error("Error al generar imagen de boleta:", error);
+                    }
+                }
+
+                // 2. Abrir WhatsApp con el mensaje estructurado
+                let orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('%0A');
                 let total = getTotalPrice();
 
                 const msg = encodeURIComponent(
                     `🧾 *NOTA DE PEDIDO - ${settings.brandTitle}* 🧾\n` +
                     `----------------------------------------\n` +
                     `👤 *Cliente:* Nuevo Pedido Web\n` +
-                    `📍 *Destino:* Lima, Perú\n` +
-                    `💳 *Pago:* Yape / Plin\n` +
+                    `💳 *Pago:* Yape / Plin (${settings.yapeNumber})\n` +
                     `----------------------------------------\n` +
                     `🛍️ *DETALLE DE PRODUCTOS:* \n${orderDetails}\n` +
                     `----------------------------------------\n` +
                     `💰 *TOTAL A PAGAR: S/ ${total}.00*\n` +
                     `----------------------------------------\n` +
-                    `✨ ¿Me confirman stock y datos para realizar el pago y coordinar el delivery?`
+                    `✨ Adjunto mi boleta generada. ¿Me confirman stock y datos para coordinar el delivery?`
                 );
                 
                 window.open(`https://wa.me/${settings.whatsapp}?text=${msg}`, '_blank');
+                setShowReceiptModal(false);
+                setIsCartOpen(false);
             };
 
             return (
@@ -324,11 +346,11 @@
                                                 <span className="gold-text text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
                                             </div>
                                             <button 
-                                                onClick={checkoutWhatsApp}
+                                                onClick={() => setShowReceiptModal(true)}
                                                 className="w-full bg-green-600 hover:bg-green-500 text-white py-3.5 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 text-xs transition"
                                             >
-                                                <span>Enviar Pedido por WhatsApp</span>
-                                                <i className="fab fa-whatsapp text-lg"></i>
+                                                <span>Generar Boleta y Pedir</span>
+                                                <i className="fas fa-file-invoice-dollar text-lg"></i>
                                             </button>
                                         </div>
                                     )}
@@ -337,6 +359,69 @@
                         )}
 
                     </div>
+
+                    {/* MODAL / VISOR DE BOLETA DIGITAL ANTES DE ENVIAR */}
+                    {showReceiptModal && (
+                        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+                            <div className="bg-[#121212] border border-yellow-600/50 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
+                                <button 
+                                    onClick={() => setShowReceiptModal(false)}
+                                    className="absolute top-4 right-4 text-gray-400 hover:text-white text-xl"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+
+                                <h3 className="text-xl font-bold gold-text text-center mb-4 uppercase tracking-widest">Vista Previa de Boleta</h3>
+
+                                {/* CONTENEDOR DE LA BOLETA QUE SE CONVERTIRÁ EN IMAGEN */}
+                                <div ref={receiptRef} className="bg-[#181818] border border-yellow-600/30 p-6 rounded-xl text-white font-mono text-xs mb-6 shadow-inner">
+                                    <div className="text-center border-b border-gray-700 pb-4 mb-4">
+                                        <h2 className="text-2xl font-bold gold-text tracking-widest">{settings.brandTitle}</h2>
+                                        <p className="text-gray-400 text-[10px] uppercase mt-1">Perfumes Árabes Originales - Lima</p>
+                                        <p className="text-gray-500 text-[10px] mt-1">Fecha: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                                    </div>
+
+                                    <div className="space-y-3 mb-4">
+                                        {cart.map(item => (
+                                            <div key={item.id} className="flex justify-between border-b border-gray-800 pb-2">
+                                                <div>
+                                                    <p className="font-bold text-white text-xs">{item.name}</p>
+                                                    <p className="text-gray-400 text-[10px]">Cant: {item.qty} x S/ {item.price}.00</p>
+                                                </div>
+                                                <p className="gold-text font-bold">S/ {item.price * item.qty}.00</p>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="border-t border-gray-700 pt-3 flex justify-between items-center text-sm">
+                                        <span className="font-bold uppercase tracking-widest text-gray-300">Total a Pagar:</span>
+                                        <span className="gold-text text-xl font-extrabold">S/ {getTotalPrice()}.00</span>
+                                    </div>
+
+                                    <div className="mt-6 text-center text-[10px] text-gray-500 border-t border-dashed border-gray-800 pt-3">
+                                        <p>Yape / Plin: {settings.yapeNumber}</p>
+                                        <p className="mt-1">¡Gracias por tu preferencia en Lima!</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={downloadReceiptAndCheckout}
+                                        className="w-full gold-bg py-3.5 rounded-xl font-bold uppercase tracking-widest hover:bg-yellow-500 transition shadow-lg text-xs flex items-center justify-center space-x-2"
+                                    >
+                                        <span>📸 Descargar Boleta e Ir a WhatsApp</span>
+                                        <i className="fab fa-whatsapp text-lg"></i>
+                                    </button>
+                                    <button 
+                                        onClick={() => setShowReceiptModal(false)}
+                                        className="w-full bg-neutral-900 border border-gray-700 text-gray-400 hover:text-white py-2.5 rounded-xl text-xs uppercase tracking-widest transition"
+                                    >
+                                        Volver al carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
                     {/* BOTÓN FLOTANTE INFERIOR */}
                     <div className="fixed bottom-6 right-6 z-40 flex items-center space-x-3">
