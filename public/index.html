@@ -67,7 +67,7 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedBrand, setSelectedBrand] = useState('Todos');
             const [cart, setCart] = useState([]);
-            const [isCartOpen, setIsCartOpen] = useState(false);
+            const [isCartOpen, setIsCartOpen] = useState(false); // Estado dinámico para mostrar/ocultar el panel doble
 
             useEffect(() => {
                 fetch('/api/data')
@@ -89,7 +89,7 @@
                 return matchesSearch && matchesBrand;
             }) : [];
 
-            // Funciones del Carrito (Agrega silenciosamente sin abrir el panel solo)
+            // Funciones del Carrito (Agrega silenciosamente sin abrir forzosamente)
             const addToCart = (perfume) => {
                 const existing = cart.find(item => item.id === perfume.id);
                 if (existing) {
@@ -207,132 +207,135 @@
                         </div>
                     </header>
 
-                    {/* CATÁLOGO DE PRODUCTOS (ANCHO COMPLETO) */}
-                    <main className="flex-grow p-8 md:p-12 max-w-7xl mx-auto w-full">
-                        {filteredPerfumes.length === 0 ? (
-                            <div className="text-center py-20 text-gray-400">
-                                <i className="fas fa-wine-bottle text-5xl mb-4 gold-text opacity-50"></i>
-                                <p className="text-xl">No encontramos perfumes que coincidan con tu búsqueda.</p>
-                                <button 
-                                    onClick={() => { setSearchTerm(''); setSelectedBrand('Todos'); }} 
-                                    className="mt-4 px-6 py-2 bg-neutral-900 border border-yellow-600/50 text-yellow-400 rounded-full text-xs uppercase tracking-widest font-bold hover:bg-yellow-500 hover:text-black transition"
-                                >
-                                    Ver todos los perfumes
-                                </button>
-                            </div>
-                        ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
-                                {filteredPerfumes.map((p, index) => (
-                                    <div 
-                                        key={p.id} 
-                                        className="perfume-card fade-in-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl"
-                                        style={{ animationDelay: `${index * 0.12}s` }}
+                    {/* CONTENEDOR PRINCIPAL: SE ADAPTA DINÁMICAMENTE A PESTAÑA DOBLE CUANDO isCartOpen ES TRUE */}
+                    <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10 items-start transition-all">
+                        
+                        {/* CATÁLOGO: OCUPA 12 COLUMNAS SI EL CARRITO ESTÁ CERRADO, SE REDUCE A 8 SI SE ABRE EL CARRITO */}
+                        <main className={`${isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all duration-300 w-full`}>
+                            {filteredPerfumes.length === 0 ? (
+                                <div className="text-center py-20 text-gray-400">
+                                    <i className="fas fa-wine-bottle text-5xl mb-4 gold-text opacity-50"></i>
+                                    <p className="text-xl">No encontramos perfumes que coincidan con tu búsqueda.</p>
+                                    <button 
+                                        onClick={() => { setSearchTerm(''); setSelectedBrand('Todos'); }} 
+                                        className="mt-4 px-6 py-2 bg-neutral-900 border border-yellow-600/50 text-yellow-400 rounded-full text-xs uppercase tracking-widest font-bold hover:bg-yellow-500 hover:text-black transition"
                                     >
-                                        <div className="h-72 overflow-hidden relative bg-black">
-                                            <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-transparent to-transparent opacity-60 z-10"></div>
-                                            <img src={p.img} alt={p.name} className="perfume-img w-full h-full object-cover" />
-                                            <span className="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur border border-yellow-600/50 text-yellow-400 text-xs px-3 py-1 rounded-full uppercase tracking-widest font-bold">Stock Árabe</span>
-                                        </div>
-                                        <div className="p-6 flex-grow flex flex-col justify-between relative z-20">
-                                            <div>
-                                                <h3 className="text-2xl font-bold mb-2 tracking-wide text-white">{p.name}</h3>
-                                                <p className="perfume-desc text-gray-400 text-sm mb-6 leading-relaxed">{p.desc}</p>
+                                        Ver todos los perfumes
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className={`grid grid-cols-1 ${isCartOpen ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'} gap-8 transition-all`}>
+                                    {filteredPerfumes.map((p, index) => (
+                                        <div 
+                                            key={p.id} 
+                                            className="perfume-card fade-in-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl"
+                                            style={{ animationDelay: `${index * 0.08}s` }}
+                                        >
+                                            <div className="h-64 overflow-hidden relative bg-black">
+                                                <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-transparent to-transparent opacity-60 z-10"></div>
+                                                <img src={p.img} alt={p.name} className="perfume-img w-full h-full object-cover" />
+                                                <span className="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur border border-yellow-600/50 text-yellow-400 text-xs px-3 py-1 rounded-full uppercase tracking-widest font-bold">Stock Árabe</span>
                                             </div>
-                                            <div>
-                                                <div className="flex items-baseline justify-between mb-6">
-                                                    <span className="text-xs text-gray-500 uppercase tracking-widest">Precio Final</span>
-                                                    <p className="gold-text text-3xl font-bold tracking-tight">S/ {p.price}.00</p>
+                                            <div className="p-6 flex-grow flex flex-col justify-between relative z-20">
+                                                <div>
+                                                    <h3 className="text-xl font-bold mb-2 tracking-wide text-white">{p.name}</h3>
+                                                    <p className="perfume-desc text-gray-400 text-xs mb-6 leading-relaxed">{p.desc}</p>
                                                 </div>
-                                                <button onClick={() => addToCart(p)} className="w-full gold-bg py-3.5 rounded-xl uppercase tracking-widest font-bold hover:bg-yellow-500 transition-all shadow-lg text-sm flex items-center justify-center space-x-2">
-                                                    <span>Agregar al Pedido</span>
-                                                    <i className="fas fa-cart-plus text-lg"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        )}
-                    </main>
-
-                    {/* BOTÓN FLOTANTE DINÁMICO (MUESTRA CUÁNTOS PRODUCTOS VAS AÑADIENDO) */}
-                    <div className="fixed bottom-6 right-6 z-40 flex items-center space-x-3">
-                        <button 
-                            onClick={() => setIsCartOpen(true)}
-                            className="bg-green-600 hover:bg-green-500 text-white px-6 py-4 rounded-full font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] flex items-center space-x-3 transition-all hover:scale-105"
-                        >
-                            <i className="fas fa-shopping-cart text-xl"></i>
-                            <span>Ver Pedido ({cart.reduce((sum, item) => sum + item.qty, 0)})</span>
-                        </button>
-                    </div>
-
-                    {/* VENTANA DINÁMICA / PANEL DESLIZANTE LATERAL (SE ABRE SOLO CUANDO EL USUARIO LO DESEA) */}
-                    {isCartOpen && (
-                        <div 
-                            className="fixed inset-0 bg-black/60 backdrop-blur-[2px] z-50 flex justify-end transition-opacity"
-                            onClick={() => setIsCartOpen(false)}
-                        >
-                            <div 
-                                className="bg-[#121212] border-l border-gray-800 w-full max-w-md h-full p-6 flex flex-col justify-between shadow-2xl"
-                                onClick={(e) => e.stopPropagation()}
-                            >
-                                <div>
-                                    <div className="flex justify-between items-center border-b border-gray-800 pb-4 mb-6">
-                                        <h3 className="text-2xl font-bold gold-text flex items-center space-x-2">
-                                            <i className="fas fa-shopping-bag"></i>
-                                            <span>Tu Cotización de Pedido</span>
-                                        </h3>
-                                        <button onClick={() => setIsCartOpen(false)} className="text-gray-400 hover:text-white text-xl">
-                                            <i className="fas fa-times"></i>
-                                        </button>
-                                    </div>
-
-                                    {cart.length === 0 ? (
-                                        <div className="text-center py-20 text-gray-500">
-                                            <i className="fas fa-cart-arrow-down text-5xl mb-3 opacity-40"></i>
-                                            <p>Aún no has agregado perfumes al pedido.</p>
-                                        </div>
-                                    ) : (
-                                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
-                                            {cart.map(item => (
-                                                <div key={item.id} className="bg-black/60 border border-gray-800 p-4 rounded-xl flex items-center justify-between gap-4">
-                                                    <img src={item.img} alt={item.name} className="w-16 h-16 object-cover rounded-lg border border-gray-700 flex-shrink-0" />
-                                                    <div className="flex-grow">
-                                                        <h4 className="text-white font-bold text-sm">{item.name}</h4>
-                                                        <p className="gold-text text-xs font-bold mt-1">S/ {item.price * item.qty}.00</p>
+                                                <div>
+                                                    <div className="flex items-baseline justify-between mb-4">
+                                                        <span className="text-xs text-gray-500 uppercase tracking-widest">Precio Final</span>
+                                                        <p className="gold-text text-2xl font-bold tracking-tight">S/ {p.price}.00</p>
                                                     </div>
-                                                    <div className="flex items-center space-x-2 bg-neutral-900 border border-gray-700 rounded-lg px-2 py-1">
-                                                        <button onClick={() => updateQty(item.id, -1)} className="text-gray-400 hover:text-white px-1">-</button>
-                                                        <span className="text-white text-xs font-bold">{item.qty}</span>
-                                                        <button onClick={() => updateQty(item.id, 1)} className="text-gray-400 hover:text-white px-1">+</button>
-                                                    </div>
-                                                    <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-400 text-sm" title="Eliminar producto">
-                                                        <i className="fas fa-trash-alt"></i>
+                                                    <button onClick={() => addToCart(p)} className="w-full gold-bg py-3.5 rounded-xl uppercase tracking-widest font-bold hover:bg-yellow-500 transition-all shadow-lg text-xs flex items-center justify-center space-x-2">
+                                                        <span>Agregar al Pedido</span>
+                                                        <i className="fas fa-cart-plus text-lg"></i>
                                                     </button>
                                                 </div>
-                                            ))}
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </main>
+
+                        {/* SEGUNDA PESTAÑA / PANEL DOBLE DINÁMICO A LA DERECHA (SOLO APARECE CUANDO EL USUARIO LO ACTIVA) */}
+                        {isCartOpen && (
+                            <aside className="lg:col-span-4 w-full sticky top-6 fade-in-card">
+                                <div className="bg-[#121212] border border-yellow-600/40 rounded-2xl p-6 shadow-2xl flex flex-col justify-between min-h-[75vh]">
+                                    <div>
+                                        <div className="flex justify-between items-center border-b border-gray-800 pb-4 mb-4">
+                                            <h3 className="text-xl font-bold gold-text flex items-center space-x-2">
+                                                <i className="fas fa-shopping-bag"></i>
+                                                <span>Tu Cotización de Pedido</span>
+                                            </h3>
+                                            <button 
+                                                onClick={() => setIsCartOpen(false)} 
+                                                className="text-gray-400 hover:text-white bg-neutral-900 border border-gray-700 w-8 h-8 rounded-full flex items-center justify-center transition"
+                                                title="Cerrar pestaña del carrito"
+                                            >
+                                                <i className="fas fa-times"></i>
+                                            </button>
+                                        </div>
+
+                                        {cart.length === 0 ? (
+                                            <div className="text-center py-24 text-gray-500">
+                                                <i className="fas fa-cart-arrow-down text-4xl mb-3 opacity-30"></i>
+                                                <p className="text-sm">Agrega productos para ver tu resumen en tiempo real aquí al lado.</p>
+                                            </div>
+                                        ) : (
+                                            <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+                                                {cart.map(item => (
+                                                    <div key={item.id} className="bg-black/60 border border-gray-800 p-3 rounded-xl flex items-center justify-between gap-3">
+                                                        <img src={item.img} alt={item.name} className="w-12 h-12 object-cover rounded-lg border border-gray-700 flex-shrink-0" />
+                                                        <div className="flex-grow">
+                                                            <h4 className="text-white font-bold text-xs line-clamp-1">{item.name}</h4>
+                                                            <p className="gold-text text-xs font-bold mt-0.5">S/ {item.price * item.qty}.00</p>
+                                                        </div>
+                                                        <div className="flex items-center space-x-1.5 bg-neutral-900 border border-gray-700 rounded-lg px-2 py-0.5">
+                                                            <button onClick={() => updateQty(item.id, -1)} className="text-gray-400 hover:text-white text-xs px-1">-</button>
+                                                            <span className="text-white text-xs font-bold">{item.qty}</span>
+                                                            <button onClick={() => updateQty(item.id, 1)} className="text-gray-400 hover:text-white text-xs px-1">+</button>
+                                                        </div>
+                                                        <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-400 text-xs px-1" title="Eliminar producto">
+                                                            <i className="fas fa-trash-alt"></i>
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {cart.length > 0 && (
+                                        <div className="border-t border-gray-800 pt-4 mt-4">
+                                            <div className="flex justify-between items-center mb-4">
+                                                <span className="text-gray-400 uppercase tracking-widest text-xs">Total Estimado:</span>
+                                                <span className="gold-text text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
+                                            </div>
+                                            <button 
+                                                onClick={checkoutWhatsApp}
+                                                className="w-full bg-green-600 hover:bg-green-500 text-white py-3.5 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 text-xs transition"
+                                            >
+                                                <span>Enviar Pedido por WhatsApp</span>
+                                                <i className="fab fa-whatsapp text-lg"></i>
+                                            </button>
                                         </div>
                                     )}
                                 </div>
+                            </aside>
+                        )}
 
-                                {cart.length > 0 && (
-                                    <div className="border-t border-gray-800 pt-6">
-                                        <div className="flex justify-between items-center mb-6">
-                                            <span className="text-gray-400 uppercase tracking-widest text-xs">Total Estimado:</span>
-                                            <span className="gold-text text-3xl font-extrabold">S/ {getTotalPrice()}.00</span>
-                                        </div>
-                                        <button 
-                                            onClick={checkoutWhatsApp}
-                                            className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 transition"
-                                        >
-                                            <span>Enviar Pedido por WhatsApp</span>
-                                            <i className="fab fa-whatsapp text-xl"></i>
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    )}
+                    </div>
+
+                    {/* BOTÓN FLOTANTE INFERIOR PARA ABRIR/CERRAR LA PESTAÑA DOBLE A VOLUNTAD */}
+                    <div className="fixed bottom-6 right-6 z-40 flex items-center space-x-3">
+                        <button 
+                            onClick={() => setIsCartOpen(!isCartOpen)}
+                            className="bg-green-600 hover:bg-green-500 text-white px-6 py-4 rounded-full font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] flex items-center space-x-3 transition-all hover:scale-105"
+                        >
+                            <i className={`fas ${isCartOpen ? 'fa-columns' : 'fa-shopping-cart'} text-xl`}></i>
+                            <span>{isCartOpen ? 'Ocultar Resumen' : `Ver Pedido (${cart.reduce((sum, item) => sum + item.qty, 0)})`}</span>
+                        </button>
+                    </div>
 
                     <footer className="py-10 border-t border-gray-900 text-center text-gray-500 text-sm bg-black">
                         <p>&copy; 2026 {settings.brandTitle}. Todos los derechos reservados.</p>
