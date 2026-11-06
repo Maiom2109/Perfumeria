@@ -10,13 +10,35 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        body { background-color: #0a0a0a; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
+        body { background-color: #050505; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
         .gold-text { color: #d4af37; }
         .gold-bg { background-color: #d4af37; color: #0a0a0a; }
-        .card { transition: all 0.3s ease; }
-        .card:hover { transform: translateY(-5px); border-color: #d4af37; }
-        .perfume-img { transition: transform 0.5s ease; }
-        .card:hover .perfume-img { transform: scale(1.1); }
+        
+        /* Efectos dinamicos avanzados para las tarjetas */
+        .perfume-card {
+            transition: all 0.4s cubic-bezier(0.165, 0.84, 0.44, 1);
+            position: relative;
+        }
+        .perfume-card:hover {
+            transform: translateY(-8px) scale(1.01);
+            border-color: #d4af37;
+            box-shadow: 0 15px 30px -10px rgba(212, 175, 55, 0.25);
+        }
+        .perfume-img {
+            transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.4s ease;
+            filter: brightness(0.95);
+        }
+        .perfume-card:hover .perfume-img {
+            transform: scale(1.12);
+            filter: brightness(1.1);
+        }
+        .perfume-desc {
+            transition: color 0.3s ease, transform 0.3s ease;
+        }
+        .perfume-card:hover .perfume-desc {
+            color: #ffffff;
+            transform: translateX(3px);
+        }
     </style>
 </head>
 <body>
@@ -45,32 +67,38 @@
 
             return (
                 <div className="min-h-screen flex flex-col">
-                    <header className="p-8 border-b border-gray-800 text-center relative">
-                        <h1 className="text-5xl font-bold tracking-[0.2em] gold-text mb-2">{settings.brandTitle}</h1>
-                        <p className="text-sm tracking-widest text-gray-400">{settings.brandSubtitle}</p>
-                        <div className="mt-6 inline-block border border-gray-700 px-6 py-2 rounded-full text-sm">
-                            <span className="text-white"><i className="fas fa-motorcycle text-gray-400 mr-2"></i>{settings.shippingText}</span>
-                            <span className="mx-4 text-gray-600">|</span>
-                            <span className="text-white"><i className="fas fa-mobile-alt text-gray-400 mr-2"></i>Yape ({settings.yapeNumber})</span>
+                    <header className="py-12 px-6 border-b border-gray-900 text-center relative bg-gradient-to-b from-[#111] to-[#050505]">
+                        <h1 className="text-6xl font-extrabold tracking-[0.25em] gold-text mb-3 drop-shadow-md">{settings.brandTitle}</h1>
+                        <p className="text-sm tracking-[0.3em] text-gray-400 uppercase">{settings.brandSubtitle}</p>
+                        <div className="mt-8 inline-block border border-yellow-600/40 bg-black/50 backdrop-blur px-8 py-3 rounded-full text-sm shadow-inner">
+                            <span className="text-white"><i className="fas fa-motorcycle gold-text mr-2"></i>{settings.shippingText}</span>
+                            <span className="mx-4 text-gray-700">|</span>
+                            <span className="text-white"><i className="fas fa-mobile-alt gold-text mr-2"></i>Yape ({settings.yapeNumber})</span>
                         </div>
                     </header>
 
-                    <main className="flex-grow p-8 max-w-7xl mx-auto w-full">
+                    <main className="flex-grow p-8 md:p-12 max-w-7xl mx-auto w-full">
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
                             {perfumes.map(p => (
-                                <div key={p.id} className="card bg-[#111] border border-gray-800 rounded-xl overflow-hidden flex flex-col">
-                                    <div className="h-64 overflow-hidden relative bg-black">
+                                <div key={p.id} className="perfume-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl">
+                                    <div className="h-72 overflow-hidden relative bg-black">
+                                        <div className="absolute inset-0 bg-gradient-to-t from-[#101010] via-transparent to-transparent opacity-60 z-10"></div>
                                         <img src={p.img} alt={p.name} className="perfume-img w-full h-full object-cover" />
+                                        <span className="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur border border-yellow-600/50 text-yellow-400 text-xs px-3 py-1 rounded-full uppercase tracking-widest font-bold">Stock Árabe</span>
                                     </div>
-                                    <div className="p-6 flex-grow flex flex-col justify-between">
+                                    <div className="p-6 flex-grow flex flex-col justify-between relative z-20">
                                         <div>
-                                            <h3 className="text-xl font-bold mb-1">{p.name}</h3>
-                                            <p className="text-gray-400 text-sm mb-4">{p.desc}</p>
+                                            <h3 className="text-2xl font-bold mb-2 tracking-wide text-white group-hover:text-yellow-400 transition">{p.name}</h3>
+                                            <p className="perfume-desc text-gray-400 text-sm mb-6 leading-relaxed">{p.desc}</p>
                                         </div>
                                         <div>
-                                            <p className="gold-text text-2xl mb-6">S/ {p.price}.00</p>
-                                            <button onClick={() => buyProduct(p.name)} className="w-full gold-bg py-3 rounded uppercase tracking-wider font-bold hover:bg-yellow-600 transition text-sm">
-                                                Comprar ahora <i className="fab fa-whatsapp ml-2"></i>
+                                            <div className="flex items-baseline justify-between mb-6">
+                                                <span className="text-xs text-gray-500 uppercase tracking-widest">Precio Final</span>
+                                                <p className="gold-text text-3xl font-bold tracking-tight">S/ {p.price}.00</p>
+                                            </div>
+                                            <button onClick={() => buyProduct(p.name)} className="w-full gold-bg py-3.5 rounded-xl uppercase tracking-widest font-bold hover:bg-yellow-500 transition-all shadow-lg text-sm flex items-center justify-center space-x-2">
+                                                <span>Comprar ahora</span>
+                                                <i className="fab fa-whatsapp text-lg"></i>
                                             </button>
                                         </div>
                                     </div>
@@ -79,13 +107,13 @@
                         </div>
                     </main>
 
-                    <footer className="p-10 border-t border-gray-800 text-center text-gray-500 text-sm">
+                    <footer className="py-10 border-t border-gray-900 text-center text-gray-500 text-sm bg-black">
                         <p>&copy; 2026 {settings.brandTitle}. Todos los derechos reservados.</p>
-                        <p className="mt-2 text-xs">Atención al cliente: {settings.whatsapp}</p>
+                        <p className="mt-2 text-xs text-gray-600">Atención personalizada vía WhatsApp: {settings.whatsapp}</p>
                     </footer>
 
                     <a href={`https://wa.me/${settings.whatsapp}?text=Hola%20${settings.brandTitle},%20deseo%20hacer%20una%20consulta.`} target="_blank" 
-                       className="fixed bottom-8 right-8 bg-green-500 text-white w-14 h-14 rounded-full flex items-center justify-center text-3xl shadow-[0_0_15px_rgba(34,197,94,0.5)] hover:scale-110 transition-transform z-50">
+                       className="fixed bottom-8 right-8 bg-green-500 hover:bg-green-400 text-white w-16 h-16 rounded-full flex items-center justify-center text-3xl shadow-[0_0_25px_rgba(34,197,94,0.6)] hover:scale-110 transition-transform z-50">
                         <i className="fab fa-whatsapp"></i>
                     </a>
                 </div>
