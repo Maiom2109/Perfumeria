@@ -67,7 +67,7 @@
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedBrand, setSelectedBrand] = useState('Todos');
             const [cart, setCart] = useState([]);
-            const [isCartOpen, setIsCartOpen] = useState(false); // Estado dinámico para mostrar/ocultar el panel doble
+            const [isCartOpen, setIsCartOpen] = useState(false);
 
             useEffect(() => {
                 fetch('/api/data')
@@ -89,7 +89,7 @@
                 return matchesSearch && matchesBrand;
             }) : [];
 
-            // Funciones del Carrito (Agrega silenciosamente sin abrir forzosamente)
+            // Funciones del Carrito
             const addToCart = (perfume) => {
                 const existing = cart.find(item => item.id === perfume.id);
                 if (existing) {
@@ -117,13 +117,26 @@
                 return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
             };
 
+            // MENSAJE ESTILO BOLETA PARA WHATSAPP
             const checkoutWhatsApp = () => {
                 if (cart.length === 0) return;
                 
-                let orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('%0A');
+                let orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name}%0A   Subtotal: S/ ${item.price * item.qty}.00`).join('%0A');
                 let total = getTotalPrice();
 
-                const msg = encodeURIComponent(`Hola ${settings.brandTitle}, deseo realizar el siguiente pedido:%0A%0A${orderDetails}%0A%0A-----------------------------------%0A*TOTAL A PAGAR: S/ ${total}.00*%0A-----------------------------------%0A¿Me confirman stock y datos para realizar el pago por Yape/Plin y coordinar el delivery en Lima?`);
+                const msg = encodeURIComponent(
+                    `🧾 *NOTA DE PEDIDO - ${settings.brandTitle}* 🧾\n` +
+                    `----------------------------------------\n` +
+                    `👤 *Cliente:* Nuevo Pedido Web\n` +
+                    `📍 *Destino:* Lima, Perú\n` +
+                    `💳 *Pago:* Yape / Plin\n` +
+                    `----------------------------------------\n` +
+                    `🛍️ *DETALLE DE PRODUCTOS:* \n${orderDetails}\n` +
+                    `----------------------------------------\n` +
+                    `💰 *TOTAL A PAGAR: S/ ${total}.00*\n` +
+                    `----------------------------------------\n` +
+                    `✨ ¿Me confirman stock y datos para realizar el pago y coordinar el delivery?`
+                );
                 
                 window.open(`https://wa.me/${settings.whatsapp}?text=${msg}`, '_blank');
             };
@@ -207,10 +220,9 @@
                         </div>
                     </header>
 
-                    {/* CONTENEDOR PRINCIPAL: SE ADAPTA DINÁMICAMENTE A PESTAÑA DOBLE CUANDO isCartOpen ES TRUE */}
+                    {/* CONTENEDOR PRINCIPAL CON PESTAÑA DOBLE DINÁMICA */}
                     <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10 items-start transition-all">
                         
-                        {/* CATÁLOGO: OCUPA 12 COLUMNAS SI EL CARRITO ESTÁ CERRADO, SE REDUCE A 8 SI SE ABRE EL CARRITO */}
                         <main className={`${isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all duration-300 w-full`}>
                             {filteredPerfumes.length === 0 ? (
                                 <div className="text-center py-20 text-gray-400">
@@ -258,7 +270,7 @@
                             )}
                         </main>
 
-                        {/* SEGUNDA PESTAÑA / PANEL DOBLE DINÁMICO A LA DERECHA (SOLO APARECE CUANDO EL USUARIO LO ACTIVA) */}
+                        {/* PANEL LATERAL DE COTIZACIÓN */}
                         {isCartOpen && (
                             <aside className="lg:col-span-4 w-full sticky top-6 fade-in-card">
                                 <div className="bg-[#121212] border border-yellow-600/40 rounded-2xl p-6 shadow-2xl flex flex-col justify-between min-h-[75vh]">
@@ -326,7 +338,7 @@
 
                     </div>
 
-                    {/* BOTÓN FLOTANTE INFERIOR PARA ABRIR/CERRAR LA PESTAÑA DOBLE A VOLUNTAD */}
+                    {/* BOTÓN FLOTANTE INFERIOR */}
                     <div className="fixed bottom-6 right-6 z-40 flex items-center space-x-3">
                         <button 
                             onClick={() => setIsCartOpen(!isCartOpen)}
