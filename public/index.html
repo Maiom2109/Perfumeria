@@ -4,7 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ARENAS | Perfumes Árabes Originales en Lima - Lattafa, Rasasi y Más</title>
+    
+    <!-- ETIQUETA DE GOOGLE SEARCH CONSOLE (Para salir en las búsquedas) -->
     <meta name="google-site-verification" content="b-YjZAn1x0ai3hTZgX6fH4z_e5kpKlsoQGAz4tTgUFk" />
+    
     <meta name="description" content="Venta de perfumes árabes originales en Lima, Perú. Encuentra Khamrah, Hawas Ice, 9PM, Asad y decants. Envíos seguros a todo Lima y pago por Yape.">
     <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes">
 
@@ -63,7 +66,7 @@
 
             const { settings, perfumes } = storeData;
 
-            // Filtrar perfumes en tiempo real según lo que escriba el usuario
+            // Filtrar perfumes en tiempo real
             const filteredPerfumes = perfumes ? perfumes.filter(p => 
                 p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 p.desc.toLowerCase().includes(searchTerm.toLowerCase())
