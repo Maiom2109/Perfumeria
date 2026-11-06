@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administración | ARENAS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+</head>
+<body class="bg-gray-100 text-gray-900 font-sans">
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const AdminPanel = () => {
+            const [perfumes, setPerfumes] = useState([]);
+            const [password, setPassword] = useState('');
+            const [isAuth, setIsAuth] = useState(false);
+
+            useEffect(() => {
+                fetch('/api/perfumes').then(res => res.json()).then(data => setPerfumes(data));
+            }, []);
+
+            const handleSave = () => {
+                fetch('/api/perfumes', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password, perfumes })
+                })
+                .then(res => res.json())
+                .then(data => {
+                    if (data.error) alert(data.error);
+                    else alert("¡Catálogo actualizado con éxito! Los cambios ya están en internet.");
+                });
+            };
+
+            const handleChange = (id, field, value) => {
+                setPerfumes(perfumes.map(p => p.id === id ? { ...p, [field]: value } : p));
+            };
+
+            const addPerfume = () => {
+                const newId = perfumes.length > 0 ? Math.max(...perfumes.map(p => p.id)) + 1 : 1;
+                setPerfumes([...perfumes, { id: newId, name: "Nuevo Perfume", price: 0, desc: "Descripción", img: "https://images.unsplash.com/photo-1594035910387-fea47794261f?auto=format&fit=crop&w=400&q=80" }]);
+            };
+
+            const removePerfume = (id) => {
+                setPerfumes(perfumes.filter(p => p.id !== id));
+            };
+
+            if (!isAuth) {
+                return (
+                    <div className="flex h-screen items-center justify-center bg-gray-900">
+                        <div className="bg-white p-8 rounded-lg shadow-xl text-center">
+                            <h2 className="text-2xl font-bold mb-4">Acceso Administrativo</h2>
+                            <input type="password" placeholder="Contraseña" className="border p-2 w-full mb-4 rounded" 
+                                value={password} onChange={e => setPassword(e.target.value)} />
+                            <button onClick={() => { if(password === 'arenas2026') setIsAuth(true); else alert('Contraseña incorrecta'); }} 
+                                className="bg-yellow-600 text-white px-6 py-2 rounded font-bold w-full">Ingresar</button>
+                            <p className="text-xs text-gray-500 mt-4">Pista: arenas2026</p>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="p-8 max-w-5xl mx-auto">
+                    <div className="flex justify-between items-center mb-8">
+                        <h1 className="text-3xl font-bold">Panel de Control - ARENAS</h1>
+                        <a href="/" className="text-blue-600 underline">Ver Tienda</a>
+                    </div>
+                    
+                    <div className="bg-white p-6 rounded-lg shadow-lg">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="bg-gray-200">
+                                    <th className="p-3 border">Nombre del Perfume</th>
+                                    <th className="p-3 border">Precio (S/)</th>
+                                    <th className="p-3 border">Descripción</th>
+                                    <th className="p-3 border">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {perfumes.map(p => (
+                                    <tr key={p.id} className="border-b">
+                                        <td className="p-3 border"><input className="w-full border p-1" value={p.name} onChange={e => handleChange(p.id, 'name', e.target.value)} /></td>
+                                        <td className="p-3 border"><input type="number" className="w-full border p-1" value={p.price} onChange={e => handleChange(p.id, 'price', e.target.value)} /></td>
+                                        <td className="p-3 border"><input className="w-full border p-1" value={p.desc} onChange={e => handleChange(p.id, 'desc', e.target.value)} /></td>
+                                        <td className="p-3 border text-center"><button onClick={() => removePerfume(p.id)} className="bg-red-500 text-white px-3 py-1 rounded">Eliminar</button></td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        
+                        <div className="mt-6 flex justify-between">
+                            <button onClick={addPerfume} className="bg-blue-600 text-white px-4 py-2 rounded font-bold">+ Agregar Perfume</button>
+                            <button onClick={handleSave} className="bg-green-600 text-white px-6 py-2 rounded font-bold text-lg shadow-lg hover:bg-green-700">GUARDAR CAMBIOS</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<AdminPanel />);
+    </script>
+</body>
+</html>
