@@ -62,6 +62,88 @@
             color: #f4f4f5;
             font-family: Arial, Helvetica, sans-serif;
         }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(18px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes floatFab {
+            0%, 100% {
+                transform: translateY(0px);
+            }
+            50% {
+                transform: translateY(-4px);
+            }
+        }
+
+        @keyframes shineSweep {
+            0% {
+                transform: translateX(-130%) skewX(-18deg);
+            }
+            100% {
+                transform: translateX(240%) skewX(-18deg);
+            }
+        }
+
+        .anim-fade-up {
+            animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .anim-float {
+            animation: floatFab 2.8s ease-in-out infinite;
+        }
+
+        .perfume-card {
+            position: relative;
+            transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), border-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .perfume-card:hover {
+            transform: translateY(-6px);
+            border-color: #a1a1aa;
+            box-shadow: 0 18px 32px -12px rgba(0, 0, 0, 0.85);
+        }
+
+        .perfume-img {
+            transition: transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), filter 0.35s ease;
+            filter: brightness(0.95);
+        }
+
+        .perfume-card:hover .perfume-img {
+            transform: scale(1.08);
+            filter: brightness(1.06);
+        }
+
+        .perfume-shine {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 55%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.14), transparent);
+            pointer-events: none;
+            opacity: 0;
+        }
+
+        .perfume-card:hover .perfume-shine {
+            opacity: 1;
+            animation: shineSweep 0.85s ease forwards;
+        }
+
+        .btn-press {
+            transition: transform 0.18s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .btn-press:active {
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body>
@@ -133,7 +215,7 @@
                         <button
                             type="button"
                             onClick={function () { window.location.reload(); }}
-                            className="px-5 py-2.5 rounded-full bg-white text-zinc-950 text-xs font-bold uppercase"
+                            className="btn-press px-5 py-2.5 rounded-full bg-white text-zinc-950 text-xs font-bold uppercase"
                         >
                             Reintentar
                         </button>
@@ -143,7 +225,7 @@
 
             if (!storeData) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center text-lg font-bold text-zinc-100 px-4 text-center bg-zinc-950">
+                    <div className="min-h-screen flex items-center justify-center text-lg font-bold text-zinc-100 px-4 text-center bg-zinc-950 anim-fade-up">
                         Cargando tienda ARENAS...
                     </div>
                 );
@@ -296,7 +378,7 @@
 
             function renderCartContent() {
                 return (
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between text-zinc-100">
+                    <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between text-zinc-100 anim-fade-up">
                         <div>
                             <div className="flex justify-between items-center border-b border-zinc-800 pb-3 mb-4 gap-2">
                                 <h3 className="text-lg sm:text-xl font-bold text-white flex items-center space-x-2">
@@ -308,7 +390,7 @@
                                         <button
                                             type="button"
                                             onClick={clearCart}
-                                            className="text-[11px] font-semibold text-zinc-400 hover:text-white underline px-1.5 py-1"
+                                            className="btn-press text-[11px] font-semibold text-zinc-400 hover:text-white underline px-1.5 py-1"
                                         >
                                             Vaciar
                                         </button>
@@ -316,7 +398,7 @@
                                     <button
                                         type="button"
                                         onClick={function () { setIsCartOpen(false); }}
-                                        className="text-zinc-300 hover:text-white bg-zinc-800 border border-zinc-700 w-8 h-8 rounded-full flex items-center justify-center"
+                                        className="btn-press text-zinc-300 hover:text-white bg-zinc-800 border border-zinc-700 w-8 h-8 rounded-full flex items-center justify-center"
                                         title="Cerrar resumen"
                                     >
                                         <i className="fas fa-times"></i>
@@ -334,18 +416,18 @@
                                     <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 mb-4">
                                         {cart.map(function (item) {
                                             return (
-                                                <div key={item.id} className="bg-zinc-950 border border-zinc-800 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3">
+                                                <div key={item.id} className="bg-zinc-950 border border-zinc-800 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3 transition hover:border-zinc-700">
                                                     <img src={item.img} alt={item.name} className="w-11 h-11 sm:w-12 sm:h-12 object-cover rounded-lg border border-zinc-800 flex-shrink-0" />
                                                     <div className="flex-grow min-w-0">
                                                         <h4 className="text-white font-bold text-xs truncate">{item.name}</h4>
                                                         <p className="text-zinc-300 text-xs font-semibold mt-0.5">S/ {item.price * item.qty}.00</p>
                                                     </div>
                                                     <div className="flex items-center space-x-1.5 bg-zinc-900 border border-zinc-700 rounded-lg px-2 py-0.5 flex-shrink-0">
-                                                        <button type="button" onClick={function () { updateQty(item.id, -1); }} className="text-zinc-300 hover:text-white text-xs font-bold px-1">-</button>
+                                                        <button type="button" onClick={function () { updateQty(item.id, -1); }} className="btn-press text-zinc-300 hover:text-white text-xs font-bold px-1">-</button>
                                                         <span className="text-white text-xs font-bold">{item.qty}</span>
-                                                        <button type="button" onClick={function () { updateQty(item.id, 1); }} className="text-zinc-300 hover:text-white text-xs font-bold px-1">+</button>
+                                                        <button type="button" onClick={function () { updateQty(item.id, 1); }} className="btn-press text-zinc-300 hover:text-white text-xs font-bold px-1">+</button>
                                                     </div>
-                                                    <button type="button" onClick={function () { removeFromCart(item.id); }} className="text-zinc-400 hover:text-white text-xs px-1 flex-shrink-0" title="Eliminar producto">
+                                                    <button type="button" onClick={function () { removeFromCart(item.id); }} className="btn-press text-zinc-400 hover:text-white text-xs px-1 flex-shrink-0" title="Eliminar producto">
                                                         <i className="fas fa-trash-alt"></i>
                                                     </button>
                                                 </div>
@@ -360,14 +442,14 @@
                                             placeholder="Tu nombre (ej. Omar)"
                                             value={customerName}
                                             onChange={function (e) { setCustomerName(e.target.value); }}
-                                            className="w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-white"
+                                            className="w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-white transition"
                                         />
                                         <input
                                             type="text"
                                             placeholder="Distrito en Lima (ej. San Miguel, Miraflores)"
                                             value={customerDistrict}
                                             onChange={function (e) { setCustomerDistrict(e.target.value); }}
-                                            className="w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-white"
+                                            className="w-full bg-zinc-900 border border-zinc-700 text-white placeholder-zinc-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-white transition"
                                         />
                                     </div>
                                 </div>
@@ -391,7 +473,7 @@
                                 <button
                                     type="button"
                                     onClick={function () { setReceiptDownloaded(false); setCopiedSummary(false); setShowReceiptModal(true); }}
-                                    className="w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-md flex items-center justify-center space-x-2 text-xs transition"
+                                    className="btn-press w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-md flex items-center justify-center space-x-2 text-xs"
                                 >
                                     <span>Generar Boleta y Pedir</span>
                                     <i className="fas fa-file-invoice-dollar text-base"></i>
@@ -406,18 +488,18 @@
 
             return (
                 <div className="min-h-screen flex flex-col relative pb-24 bg-zinc-950 text-zinc-100">
-                    <header className="py-8 sm:py-12 px-4 sm:px-6 border-b border-zinc-800 text-center bg-black">
+                    <header className="py-8 sm:py-12 px-4 sm:px-6 border-b border-zinc-800 text-center bg-black anim-fade-up">
                         <h1 className="text-4xl sm:text-6xl font-black tracking-[0.16em] sm:tracking-[0.22em] text-white mb-2 sm:mb-3 break-words">{settings.brandTitle}</h1>
                         <p className="text-xs sm:text-sm tracking-[0.18em] sm:tracking-[0.25em] text-zinc-400 uppercase">{settings.brandSubtitle}</p>
 
-                        <div className="mt-5 inline-flex flex-wrap justify-center items-center border border-zinc-800 bg-zinc-900 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm gap-2">
+                        <div className="mt-5 inline-flex flex-wrap justify-center items-center border border-zinc-800 bg-zinc-900 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm gap-2 transition hover:border-zinc-700">
                             <span className="text-zinc-200 font-medium"><i className="fas fa-motorcycle text-white mr-2"></i>{settings.shippingText}</span>
                             <span className="hidden sm:inline mx-3 text-zinc-700">|</span>
                             <span className="text-zinc-200 font-medium"><i className="fas fa-mobile-alt text-white mr-2"></i>Yape ({settings.yapeNumber})</span>
                             <button
                                 type="button"
                                 onClick={handleCopyYape}
-                                className="px-2.5 py-1 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 text-[11px] font-bold transition"
+                                className="btn-press px-2.5 py-1 rounded-full bg-white hover:bg-zinc-200 text-zinc-950 text-[11px] font-bold"
                             >
                                 <i className={'fas ' + (copiedYape ? 'fa-check' : 'fa-copy') + ' mr-1'}></i>
                                 {copiedYape ? 'Copiado' : 'Copiar'}
@@ -425,7 +507,7 @@
                         </div>
 
                         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-shield-alt"></i>
                                 </div>
@@ -434,7 +516,7 @@
                                     <p className="text-zinc-400 text-[11px] sm:text-xs">Garantía en perfumes árabes</p>
                                 </div>
                             </div>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-wallet"></i>
                                 </div>
@@ -443,7 +525,7 @@
                                     <p className="text-zinc-400 text-[11px] sm:text-xs">Pagos rápidos ({settings.yapeNumber})</p>
                                 </div>
                             </div>
-                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                            <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-motorcycle"></i>
                                 </div>
@@ -469,7 +551,7 @@
                                 <button
                                     type="button"
                                     onClick={function () { setSearchTerm(''); }}
-                                    className="absolute inset-y-0 right-4 flex items-center text-zinc-400 hover:text-white text-[11px] font-bold uppercase tracking-wider"
+                                    className="btn-press absolute inset-y-0 right-4 flex items-center text-zinc-400 hover:text-white text-[11px] font-bold uppercase tracking-wider"
                                 >
                                     Limpiar
                                 </button>
@@ -484,7 +566,7 @@
                                         key={brand}
                                         type="button"
                                         onClick={function () { setSelectedBrand(brand); }}
-                                        className={'px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all border ' + (
+                                        className={'btn-press px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider border ' + (
                                             active
                                                 ? 'bg-white text-zinc-950 border-white'
                                                 : 'bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-500 hover:text-white'
@@ -500,25 +582,30 @@
                     <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 p-4 sm:p-6 md:p-10 items-start">
                         <main className={(isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12') + ' w-full'}>
                             {filteredPerfumes.length === 0 ? (
-                                <div className="text-center py-16 text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-2xl px-4">
+                                <div className="text-center py-16 text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-2xl px-4 anim-fade-up">
                                     <i className="fas fa-wine-bottle text-4xl sm:text-5xl mb-4 text-zinc-600"></i>
                                     <p className="text-lg sm:text-xl font-medium">No encontramos perfumes que coincidan con tu búsqueda.</p>
                                     <button
                                         type="button"
                                         onClick={function () { setSearchTerm(''); setSelectedBrand('Todos'); }}
-                                        className="mt-4 px-6 py-2 bg-white text-zinc-950 rounded-full text-xs uppercase tracking-wider font-bold hover:bg-zinc-200 transition"
+                                        className="btn-press mt-4 px-6 py-2 bg-white text-zinc-950 rounded-full text-xs uppercase tracking-wider font-bold hover:bg-zinc-200"
                                     >
                                         Ver todos los perfumes
                                     </button>
                                 </div>
                             ) : (
                                 <div className={'grid grid-cols-1 sm:grid-cols-2 ' + (isCartOpen ? 'xl:grid-cols-2' : 'lg:grid-cols-3') + ' gap-5 sm:gap-7'}>
-                                    {filteredPerfumes.map(function (p) {
+                                    {filteredPerfumes.map(function (p, index) {
                                         return (
-                                            <article key={p.id} className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-lg">
+                                            <article
+                                                key={p.id}
+                                                className="perfume-card anim-fade-up bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden flex flex-col shadow-lg"
+                                                style={{ animationDelay: Math.min(index * 0.06, 0.45) + 's' }}
+                                            >
                                                 <div className="h-56 sm:h-64 overflow-hidden relative bg-black m-3 sm:m-4 rounded-xl border border-zinc-800">
-                                                    <img src={p.img} alt={p.name + ' - Perfume árabe en Lima'} className="w-full h-full object-cover" />
-                                                    <span className="absolute top-3 right-3 bg-zinc-950 border border-zinc-700 text-zinc-100 text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider font-bold">
+                                                    <img src={p.img} alt={p.name + ' - Perfume árabe en Lima'} className="perfume-img w-full h-full object-cover" />
+                                                    <span className="perfume-shine"></span>
+                                                    <span className="absolute top-3 right-3 bg-zinc-950 border border-zinc-700 text-zinc-100 text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider font-bold transition-transform duration-300 group-hover:scale-105">
                                                         {detectBadge(p)}
                                                     </span>
                                                 </div>
@@ -535,7 +622,7 @@
                                                         <button
                                                             type="button"
                                                             onClick={function () { addToCart(p); }}
-                                                            className="w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3 sm:py-3.5 rounded-xl uppercase tracking-wider font-bold transition-all text-xs flex items-center justify-center space-x-2"
+                                                            className="btn-press w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3 sm:py-3.5 rounded-xl uppercase tracking-wider font-bold text-xs flex items-center justify-center space-x-2"
                                                         >
                                                             <span>Agregar al Pedido</span>
                                                             <i className="fas fa-cart-plus text-sm"></i>
@@ -564,22 +651,22 @@
                         </div>
                     )}
 
-                    <section className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-zinc-800 mt-10 w-full">
+                    <section className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-zinc-800 mt-10 w-full anim-fade-up">
                         <h2 className="text-2xl sm:text-3xl font-extrabold text-white text-center mb-6 sm:mb-8">Preguntas Frecuentes sobre Perfumes Árabes en Lima</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
-                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl">
+                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <h3 className="text-white font-bold mb-2"><i className="fas fa-check-circle text-zinc-300 mr-2"></i>¿Los perfumes árabes son 100% originales?</h3>
                                 <p className="text-zinc-400 leading-relaxed">Sí, en ARENAS trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima.</p>
                             </div>
-                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl">
+                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <h3 className="text-white font-bold mb-2"><i className="fas fa-wallet text-zinc-300 mr-2"></i>¿Cómo se realizan los pagos?</h3>
                                 <p className="text-zinc-400 leading-relaxed">Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda ({settings.yapeNumber}).</p>
                             </div>
-                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl">
+                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <h3 className="text-white font-bold mb-2"><i className="fas fa-motorcycle text-zinc-300 mr-2"></i>¿Cómo funciona el delivery en Lima?</h3>
                                 <p className="text-zinc-400 leading-relaxed">Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta.</p>
                             </div>
-                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl">
+                            <div className="bg-zinc-900 border border-zinc-800 p-5 sm:p-6 rounded-xl transition duration-300 hover:-translate-y-1 hover:border-zinc-700">
                                 <h3 className="text-white font-bold mb-2"><i className="fas fa-star text-zinc-300 mr-2"></i>¿Qué marcas de perfumes árabes recomiendan?</h3>
                                 <p className="text-zinc-400 leading-relaxed">Entre los favoritos del público se encuentran Khamrah y Asad de Lattafa, Hawas de Rasasi y 9PM de Afnan, ideales por su gran fijación y proyección.</p>
                             </div>
@@ -588,11 +675,11 @@
 
                     {showReceiptModal && (
                         <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-                            <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto text-zinc-100">
+                            <div className="anim-fade-up bg-zinc-900 border border-zinc-700 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto text-zinc-100">
                                 <button
                                     type="button"
                                     onClick={function () { setShowReceiptModal(false); }}
-                                    className="absolute top-3 right-3 text-zinc-400 hover:text-white text-lg p-1"
+                                    className="btn-press absolute top-3 right-3 text-zinc-400 hover:text-white text-lg p-1"
                                 >
                                     <i className="fas fa-times"></i>
                                 </button>
@@ -647,7 +734,7 @@
                                     <button
                                         type="button"
                                         onClick={downloadReceiptImage}
-                                        className="w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                        className="btn-press w-full bg-white hover:bg-zinc-200 text-zinc-950 py-3 rounded-xl font-bold uppercase tracking-wider text-xs flex items-center justify-center space-x-2"
                                     >
                                         <i className="fas fa-download text-sm"></i>
                                         <span>{receiptDownloaded ? 'Boleta Descargada (Descargar otra vez)' : '1. Descargar Imagen de Boleta'}</span>
@@ -655,7 +742,7 @@
                                     <button
                                         type="button"
                                         onClick={handleCopySummary}
-                                        className="w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 py-2.5 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                        className="btn-press w-full bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100 py-2.5 rounded-xl font-bold uppercase tracking-wider text-xs flex items-center justify-center space-x-2"
                                     >
                                         <i className={'fas ' + (copiedSummary ? 'fa-check' : 'fa-copy') + ' text-sm'}></i>
                                         <span>{copiedSummary ? 'Resumen Copiado' : 'Copiar Resumen en Texto'}</span>
@@ -665,7 +752,7 @@
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         onClick={function () { setShowReceiptModal(false); setIsCartOpen(false); }}
-                                        className="w-full bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                        className="btn-press w-full bg-zinc-700 hover:bg-zinc-600 text-white py-3 rounded-xl font-bold uppercase tracking-wider text-xs flex items-center justify-center space-x-2"
                                     >
                                         <i className="fab fa-whatsapp text-base"></i>
                                         <span>2. Enviar Pedido por WhatsApp</span>
@@ -673,7 +760,7 @@
                                     <button
                                         type="button"
                                         onClick={function () { setShowReceiptModal(false); }}
-                                        className="w-full bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white py-2 rounded-xl text-xs uppercase tracking-wider transition"
+                                        className="btn-press w-full bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white py-2 rounded-xl text-xs uppercase tracking-wider"
                                     >
                                         Volver al carrito
                                     </button>
@@ -682,11 +769,11 @@
                         </div>
                     )}
 
-                    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center space-x-3">
+                    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center space-x-3 anim-float">
                         <button
                             type="button"
                             onClick={function () { setIsCartOpen(!isCartOpen); }}
-                            className="bg-white hover:bg-zinc-200 text-zinc-950 px-4 py-3 sm:px-6 sm:py-4 rounded-full font-bold shadow-xl flex items-center space-x-2 sm:space-x-3 transition-all hover:scale-105 text-xs sm:text-sm"
+                            className="btn-press bg-white hover:bg-zinc-200 text-zinc-950 px-4 py-3 sm:px-6 sm:py-4 rounded-full font-bold shadow-xl flex items-center space-x-2 sm:space-x-3 text-xs sm:text-sm"
                         >
                             <i className={'fas ' + (isCartOpen ? 'fa-columns' : 'fa-shopping-cart') + ' text-base sm:text-xl'}></i>
                             <span>{isCartOpen ? 'Ocultar Resumen' : 'Ver Pedido (' + totalItems + ')'}</span>
