@@ -3,22 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARENAS | Perfumes Árabes Originales y Decants en Lima - Lattafa, Rasasi</title>
-    
+    <title>ARENAS | Perfumes Árabes Originales y Decants en Lima</title>
+
     <!-- ETIQUETA DE GOOGLE SEARCH CONSOLE -->
     <meta name="google-site-verification" content="b-YjZAn1x0ai3hTZgX6fH4z_e5kpKlsoQGAz4tTgUFk" />
-    
-    <meta name="description" content="Compra perfumes árabes originales y decants de 5 ml, 10 ml y 15 ml en Lima, Perú. Lattafa Khamrah, Asad Bourbon, Rasasi Hawas Ice y más. Pago por Yape/Plin y delivery en Lima.">
-    <meta name="keywords" content="perfumes árabes Lima, decants perfumes árabes Lima, Khamrah Lattafa Perú, Hawas Ice Rasasi, Asad Bourbon, perfumes originales San Miguel Lima, Tienda ARENAS">
+
+    <meta name="description" content="Compra perfumes árabes originales y decants de 5 ml, 10 ml y 15 ml en Lima, Perú. Pago por Yape/Plin y delivery en Lima.">
     <link rel="canonical" href="https://tienda-arenas.onrender.com/" />
 
-    <!-- OPEN GRAPH PARA WHATSAPP Y REDES SOCIALES -->
-    <meta property="og:title" content="ARENAS | Perfumes Árabes Originales y Decants en Lima" />
-    <meta property="og:description" content="Arma tu pedido online, genera tu boleta digital al instante y paga seguro con Yape o Plin. Delivery en todo Lima." />
-    <meta property="og:url" content="https://tienda-arenas.onrender.com/" />
-    <meta property="og:type" content="website" />
-
-    <!-- DATOS ESTRUCTURADOS JSON-LD PARA GOOGLE -->
+    <!-- DATOS ESTRUCTURADOS JSON-LD -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
@@ -26,12 +19,8 @@
         {
           "@type": "Store",
           "name": "Tienda ARENAS",
-          "description": "Tienda online de perfumes árabes originales y decants en Lima, Perú.",
           "url": "https://tienda-arenas.onrender.com/",
-          "areaServed": {
-            "@type": "City",
-            "name": "Lima"
-          },
+          "areaServed": { "@type": "City", "name": "Lima" },
           "paymentAccepted": "Yape, Plin",
           "currenciesAccepted": "PEN"
         },
@@ -43,15 +32,7 @@
               "name": "¿Los perfumes árabes son 100% originales?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Sí, en ARENAS trabajamos exclusivamente con perfumes árabes originales de marcas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima."
-              }
-            },
-            {
-              "@type": "Question",
-              "name": "¿Cómo se realizan los pagos?",
-              "acceptedAnswer": {
-                "@type": "Answer",
-                "text": "Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda."
+                "text": "Sí, en ARENAS trabajamos con perfumes árabes originales con garantía en Lima."
               }
             },
             {
@@ -59,7 +40,7 @@
               "name": "¿Cómo funciona el delivery en Lima?",
               "acceptedAnswer": {
                 "@type": "Answer",
-                "text": "Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta."
+                "text": "Envíos en Lima metropolitana con tarifa de S/ 12.00 y coordinación por WhatsApp."
               }
             }
           ]
@@ -79,60 +60,36 @@
             overflow-x: hidden;
             background-color: #f8f8f8;
             color: #111111;
-            font-family: 'Helvetica Neue', 'Arial', sans-serif;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(14px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        .fade-in-card {
-            animation: fadeInUp 0.45s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
-            opacity: 0;
-        }
-
-        .perfume-card {
-            transition: all 0.25s ease;
-        }
-        .perfume-card:hover {
-            transform: translateY(-4px);
-            border-color: #111111;
-            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.14);
-        }
-
-        .perfume-img {
-            transition: transform 0.45s ease;
-        }
-        .perfume-card:hover .perfume-img {
-            transform: scale(1.05);
+            font-family: Arial, Helvetica, sans-serif;
         }
     </style>
 </head>
 <body>
     <div id="root"></div>
+
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
-
         const CART_STORAGE_KEY = 'arenas_cart_v1';
+        const SHIPPING_COST = 12;
 
-        const detectBadge = (perfume) => {
-            const text = `${perfume.name || ''} ${perfume.desc || ''}`.toLowerCase();
+        function detectBadge(perfume) {
+            const text = ((perfume.name || '') + ' ' + (perfume.desc || '')).toLowerCase();
             if (text.includes('decant') || text.includes('ml')) return 'Formato / Decant';
             if (text.includes('verano') || text.includes('fresco') || text.includes('hawas')) return 'Fresco / Diario';
             if (text.includes('invierno') || text.includes('noche') || text.includes('khamrah') || text.includes('asad')) return 'Intenso / Noche';
             return 'Original';
-        };
+        }
 
-        const App = () => {
+        function App() {
             const [storeData, setStoreData] = useState(null);
+            const [loadError, setLoadError] = useState(false);
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedBrand, setSelectedBrand] = useState('Todos');
-            const [cart, setCart] = useState(() => {
+            const [cart, setCart] = useState(function () {
                 try {
                     const saved = localStorage.getItem(CART_STORAGE_KEY);
                     return saved ? JSON.parse(saved) : [];
-                } catch {
+                } catch (e) {
                     return [];
                 }
             });
@@ -145,271 +102,328 @@
             const [customerDistrict, setCustomerDistrict] = useState('');
             const receiptRef = useRef(null);
 
-            const SHIPPING_COST = 12;
-
-            useEffect(() => {
+            useEffect(function () {
                 fetch('/api/data')
-                    .then(res => res.json())
-                    .then(data => setStoreData(data))
-                    .catch(err => console.error("Error al cargar datos:", err));
+                    .then(function (res) {
+                        if (!res.ok) throw new Error('Error de red');
+                        return res.json();
+                    })
+                    .then(function (data) {
+                        setStoreData(data);
+                    })
+                    .catch(function (err) {
+                        console.error('Error al cargar datos:', err);
+                        setLoadError(true);
+                    });
             }, []);
 
-            useEffect(() => {
+            useEffect(function () {
                 try {
                     localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
-                } catch {
-                    // Ignorar si el almacenamiento no está disponible
+                } catch (e) {
+                    // Ignorar error de almacenamiento
                 }
             }, [cart]);
 
-            if (!storeData) return <div className="min-h-screen flex items-center justify-center text-lg sm:text-xl font-semibold text-neutral-900 px-4 text-center">Cargando tienda ARENAS...</div>;
+            if (loadError) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white text-neutral-900">
+                        <p className="text-lg font-bold mb-2">No se pudieron cargar los datos de la tienda</p>
+                        <p className="text-xs text-neutral-600 mb-4">Verifica que el servidor en Render esté activo y respondiendo en /api/data.</p>
+                        <button
+                            type="button"
+                            onClick={function () { window.location.reload(); }}
+                            className="px-5 py-2.5 rounded-full bg-neutral-950 text-white text-xs font-bold uppercase"
+                        >
+                            Reintentar
+                        </button>
+                    </div>
+                );
+            }
 
-            const { settings, perfumes } = storeData;
+            if (!storeData) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center text-lg font-bold text-neutral-900 px-4 text-center">
+                        Cargando tienda ARENAS...
+                    </div>
+                );
+            }
+
+            const settings = storeData.settings || {
+                brandTitle: 'ARENAS',
+                brandSubtitle: 'Perfumes Árabes & Decants',
+                shippingText: 'Delivery en Lima S/ 12.00',
+                yapeNumber: '',
+                whatsapp: ''
+            };
+            const perfumes = Array.isArray(storeData.perfumes) ? storeData.perfumes : [];
             const defaultBrands = ['Todos', 'Lattafa', 'Rasasi', 'Afnan', 'Armaf', 'Al Haramain'];
 
-            const filteredPerfumes = perfumes ? perfumes.filter(p => {
-                const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                                      p.desc.toLowerCase().includes(searchTerm.toLowerCase());
-                const matchesBrand = selectedBrand === 'Todos' || p.name.toLowerCase().includes(selectedBrand.toLowerCase());
+            const filteredPerfumes = perfumes.filter(function (p) {
+                const name = (p.name || '').toLowerCase();
+                const desc = (p.desc || '').toLowerCase();
+                const q = searchTerm.toLowerCase();
+                const matchesSearch = name.includes(q) || desc.includes(q);
+                const matchesBrand = selectedBrand === 'Todos' || name.includes(selectedBrand.toLowerCase());
                 return matchesSearch && matchesBrand;
-            }) : [];
+            });
 
-            const addToCart = (perfume) => {
-                const existing = cart.find(item => item.id === perfume.id);
-                if (existing) {
-                    setCart(cart.map(item => item.id === perfume.id ? { ...item, qty: item.qty + 1 } : item));
-                } else {
-                    setCart([...cart, { ...perfume, qty: 1 }]);
-                }
-            };
-
-            const updateQty = (id, delta) => {
-                setCart(cart.map(item => {
-                    if (item.id === id) {
-                        const newQty = item.qty + delta;
-                        return newQty > 0 ? { ...item, qty: newQty } : null;
+            function addToCart(perfume) {
+                setCart(function (prev) {
+                    const found = prev.find(function (item) { return item.id === perfume.id; });
+                    if (found) {
+                        return prev.map(function (item) {
+                            return item.id === perfume.id ? Object.assign({}, item, { qty: item.qty + 1 }) : item;
+                        });
                     }
-                    return item;
-                }).filter(Boolean));
-            };
+                    return prev.concat([Object.assign({}, perfume, { qty: 1 })]);
+                });
+            }
 
-            const removeFromCart = (id) => {
-                setCart(cart.filter(item => item.id !== id));
-            };
+            function updateQty(id, delta) {
+                setCart(function (prev) {
+                    return prev
+                        .map(function (item) {
+                            if (item.id === id) {
+                                const nextQty = item.qty + delta;
+                                return nextQty > 0 ? Object.assign({}, item, { qty: nextQty }) : null;
+                            }
+                            return item;
+                        })
+                        .filter(Boolean);
+                });
+            }
 
-            const clearCart = () => {
+            function removeFromCart(id) {
+                setCart(function (prev) {
+                    return prev.filter(function (item) { return item.id !== id; });
+                });
+            }
+
+            function clearCart() {
                 setCart([]);
-            };
+            }
 
-            const getSubtotal = () => {
-                return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
-            };
+            function getSubtotal() {
+                return cart.reduce(function (sum, item) {
+                    return sum + (Number(item.price || 0) * Number(item.qty || 1));
+                }, 0);
+            }
 
-            const getTotalPrice = () => {
+            function getTotalPrice() {
                 return getSubtotal() + (cart.length > 0 ? SHIPPING_COST : 0);
-            };
+            }
 
             const cleanName = customerName.trim() || 'Cliente Web';
             const cleanDistrict = customerDistrict.trim() || 'Por coordinar (Lima)';
 
-            const buildPlainOrderText = () => {
-                const orderDetails = cart.map(item => `• ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('\n');
-                const subtotal = getSubtotal();
-                const total = getTotalPrice();
+            function buildPlainOrderText() {
+                const lines = cart.map(function (item) {
+                    return '• ' + item.qty + 'x ' + item.name + ' - S/ ' + (item.price * item.qty) + '.00';
+                }).join('\n');
+                return [
+                    'NOTA DE PEDIDO - ' + settings.brandTitle,
+                    'Cliente: ' + cleanName,
+                    'Distrito (Lima): ' + cleanDistrict,
+                    'Pago: Yape / Plin (' + settings.yapeNumber + ')',
+                    'Productos:',
+                    lines,
+                    'Subtotal: S/ ' + getSubtotal() + '.00',
+                    'Delivery Lima: S/ ' + SHIPPING_COST + '.00',
+                    'TOTAL A PAGAR: S/ ' + getTotalPrice() + '.00'
+                ].join('\n');
+            }
 
-                return (
-                    `NOTA DE PEDIDO - ${settings.brandTitle}\n` +
-                    `Cliente: ${cleanName}\n` +
-                    `Distrito (Lima): ${cleanDistrict}\n` +
-                    `Pago: Yape / Plin (${settings.yapeNumber})\n` +
-                    `Productos:\n${orderDetails}\n` +
-                    `Subtotal: S/ ${subtotal}.00\n` +
-                    `Delivery Lima: S/ ${SHIPPING_COST}.00\n` +
-                    `TOTAL A PAGAR: S/ ${total}.00`
-                );
-            };
+            function buildWhatsAppUrl() {
+                const lines = cart.map(function (item) {
+                    return '▪️ ' + item.qty + 'x ' + item.name + ' - S/ ' + (item.price * item.qty) + '.00';
+                }).join('\n');
 
-            const buildWhatsAppUrl = () => {
-                const orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('\n');
-                const subtotal = getSubtotal();
-                const total = getTotalPrice();
+                const text = [
+                    '🧾 *NOTA DE PEDIDO - ' + settings.brandTitle + '* 🧾',
+                    '----------------------------------------',
+                    '👤 *Cliente:* ' + cleanName,
+                    '📍 *Distrito (Lima):* ' + cleanDistrict,
+                    '💳 *Pago:* Yape / Plin (' + settings.yapeNumber + ')',
+                    '----------------------------------------',
+                    '🛍️ *DETALLE DE PRODUCTOS:*',
+                    lines,
+                    '----------------------------------------',
+                    '📦 *Subtotal:* S/ ' + getSubtotal() + '.00',
+                    '🛵 *Delivery en Lima:* S/ ' + SHIPPING_COST + '.00',
+                    '💰 *TOTAL A PAGAR: S/ ' + getTotalPrice() + '.00*',
+                    '----------------------------------------',
+                    '✨ Adjunto mi boleta en imagen. ¿Me confirman stock y entrega?'
+                ].join('\n');
 
-                const msg = encodeURIComponent(
-                    `🧾 *NOTA DE PEDIDO - ${settings.brandTitle}* 🧾\n` +
-                    `----------------------------------------\n` +
-                    `👤 *Cliente:* ${cleanName}\n` +
-                    `📍 *Distrito (Lima):* ${cleanDistrict}\n` +
-                    `💳 *Pago:* Yape / Plin (${settings.yapeNumber})\n` +
-                    `----------------------------------------\n` +
-                    `🛍️ *DETALLE DE PRODUCTOS:*\n${orderDetails}\n` +
-                    `----------------------------------------\n` +
-                    `📦 *Subtotal:* S/ ${subtotal}.00\n` +
-                    `🛵 *Delivery en Lima:* S/ ${SHIPPING_COST}.00\n` +
-                    `💰 *TOTAL A PAGAR: S/ ${total}.00*\n` +
-                    `----------------------------------------\n` +
-                    `✨ Adjunto mi boleta en imagen. ¿Me confirman stock y entrega?`
-                );
+                return 'https://wa.me/' + settings.whatsapp + '?text=' + encodeURIComponent(text);
+            }
 
-                return `https://wa.me/${settings.whatsapp}?text=${msg}`;
-            };
-
-            const handleCopyYape = async () => {
+            async function handleCopyYape() {
                 try {
-                    await navigator.clipboard.writeText(String(settings.yapeNumber));
+                    await navigator.clipboard.writeText(String(settings.yapeNumber || ''));
                     setCopiedYape(true);
-                    setTimeout(() => setCopiedYape(false), 2000);
-                } catch {
+                    setTimeout(function () { setCopiedYape(false); }, 2000);
+                } catch (e) {
                     setCopiedYape(false);
                 }
-            };
+            }
 
-            const handleCopySummary = async () => {
+            async function handleCopySummary() {
                 try {
                     await navigator.clipboard.writeText(buildPlainOrderText());
                     setCopiedSummary(true);
-                    setTimeout(() => setCopiedSummary(false), 2000);
-                } catch {
+                    setTimeout(function () { setCopiedSummary(false); }, 2000);
+                } catch (e) {
                     setCopiedSummary(false);
                 }
-            };
+            }
 
-            const downloadReceiptImage = async () => {
-                if (!receiptRef.current) return;
+            async function downloadReceiptImage() {
+                if (!receiptRef.current || typeof html2canvas === 'undefined') return;
                 try {
                     const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2 });
-                    const image = canvas.toDataURL("image/png");
+                    const image = canvas.toDataURL('image/png');
                     const link = document.createElement('a');
                     link.href = image;
-                    link.download = `Boleta_ARENAS_${Date.now()}.png`;
+                    link.download = 'Boleta_ARENAS_' + Date.now() + '.png';
                     link.click();
                     setReceiptDownloaded(true);
-                } catch (error) {
-                    console.error("Error al generar imagen de boleta:", error);
+                } catch (err) {
+                    console.error('Error al generar boleta:', err);
                 }
-            };
+            }
 
-            const renderCartContent = () => (
-                <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between text-neutral-900">
-                    <div>
-                        <div className="flex justify-between items-center border-b border-neutral-200 pb-3 mb-4 gap-2">
-                            <h3 className="text-lg sm:text-xl font-bold text-neutral-950 flex items-center space-x-2">
-                                <i className="fas fa-shopping-bag"></i>
-                                <span>Tu Pedido</span>
-                            </h3>
-                            <div className="flex items-center gap-2">
-                                {cart.length > 0 && (
+            function renderCartContent() {
+                return (
+                    <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between text-neutral-900">
+                        <div>
+                            <div className="flex justify-between items-center border-b border-neutral-200 pb-3 mb-4 gap-2">
+                                <h3 className="text-lg sm:text-xl font-bold text-neutral-950 flex items-center space-x-2">
+                                    <i className="fas fa-shopping-bag"></i>
+                                    <span>Tu Pedido</span>
+                                </h3>
+                                <div className="flex items-center gap-2">
+                                    {cart.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={clearCart}
+                                            className="text-[11px] font-semibold text-neutral-600 hover:text-neutral-950 underline px-1.5 py-1"
+                                        >
+                                            Vaciar
+                                        </button>
+                                    )}
                                     <button
                                         type="button"
-                                        onClick={clearCart}
-                                        className="text-[11px] font-semibold text-neutral-600 hover:text-neutral-950 underline px-1.5 py-1"
+                                        onClick={function () { setIsCartOpen(false); }}
+                                        className="text-neutral-600 hover:text-neutral-950 bg-neutral-100 border border-neutral-300 w-8 h-8 rounded-full flex items-center justify-center"
+                                        title="Cerrar resumen"
                                     >
-                                        Vaciar
+                                        <i className="fas fa-times"></i>
                                     </button>
-                                )}
-                                <button 
-                                    onClick={() => setIsCartOpen(false)} 
-                                    className="text-neutral-600 hover:text-neutral-950 bg-neutral-100 border border-neutral-300 w-8 h-8 rounded-full flex items-center justify-center transition"
-                                    title="Cerrar resumen"
+                                </div>
+                            </div>
+
+                            {cart.length === 0 ? (
+                                <div className="text-center py-12 text-neutral-500">
+                                    <i className="fas fa-cart-arrow-down text-4xl mb-3 opacity-40"></i>
+                                    <p className="text-sm">Agrega productos para ver tu resumen aquí.</p>
+                                </div>
+                            ) : (
+                                <div>
+                                    <div className="space-y-3 max-h-[40vh] overflow-y-auto pr-1 mb-4">
+                                        {cart.map(function (item) {
+                                            return (
+                                                <div key={item.id} className="bg-neutral-50 border border-neutral-200 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3">
+                                                    <img src={item.img} alt={item.name} className="w-11 h-11 sm:w-12 sm:h-12 object-cover rounded-lg border border-neutral-200 flex-shrink-0" />
+                                                    <div className="flex-grow min-w-0">
+                                                        <h4 className="text-neutral-950 font-bold text-xs truncate">{item.name}</h4>
+                                                        <p className="text-neutral-800 text-xs font-semibold mt-0.5">S/ {item.price * item.qty}.00</p>
+                                                    </div>
+                                                    <div className="flex items-center space-x-1.5 bg-white border border-neutral-300 rounded-lg px-2 py-0.5 flex-shrink-0">
+                                                        <button type="button" onClick={function () { updateQty(item.id, -1); }} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">-</button>
+                                                        <span className="text-neutral-950 text-xs font-bold">{item.qty}</span>
+                                                        <button type="button" onClick={function () { updateQty(item.id, 1); }} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">+</button>
+                                                    </div>
+                                                    <button type="button" onClick={function () { removeFromCart(item.id); }} className="text-neutral-500 hover:text-neutral-950 text-xs px-1 flex-shrink-0" title="Eliminar producto">
+                                                        <i className="fas fa-trash-alt"></i>
+                                                    </button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 mb-4 space-y-2.5">
+                                        <p className="text-[11px] uppercase tracking-wider text-neutral-600 font-bold">Datos para entrega (opcional)</p>
+                                        <input
+                                            type="text"
+                                            placeholder="Tu nombre (ej. Omar)"
+                                            value={customerName}
+                                            onChange={function (e) { setCustomerName(e.target.value); }}
+                                            className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Distrito en Lima (ej. San Miguel, Miraflores)"
+                                            value={customerDistrict}
+                                            onChange={function (e) { setCustomerDistrict(e.target.value); }}
+                                            className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
+                                        />
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {cart.length > 0 && (
+                            <div className="border-t border-neutral-200 pt-4 space-y-2">
+                                <div className="flex justify-between items-center text-xs text-neutral-600">
+                                    <span>Subtotal productos:</span>
+                                    <span>S/ {getSubtotal()}.00</span>
+                                </div>
+                                <div className="flex justify-between items-center text-xs text-neutral-600">
+                                    <span>Delivery en Lima:</span>
+                                    <span>S/ {SHIPPING_COST}.00</span>
+                                </div>
+                                <div className="flex justify-between items-center mb-3 pt-2 border-t border-neutral-200">
+                                    <span className="text-neutral-900 uppercase tracking-wider text-xs font-bold">Total a Pagar:</span>
+                                    <span className="text-neutral-950 text-xl sm:text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={function () { setReceiptDownloaded(false); setCopiedSummary(false); setShowReceiptModal(true); }}
+                                    className="w-full bg-neutral-950 hover:bg-neutral-800 text-white py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-md flex items-center justify-center space-x-2 text-xs transition"
                                 >
-                                    <i className="fas fa-times"></i>
+                                    <span>Generar Boleta y Pedir</span>
+                                    <i className="fas fa-file-invoice-dollar text-base"></i>
                                 </button>
                             </div>
-                        </div>
-
-                        {cart.length === 0 ? (
-                            <div className="text-center py-12 text-neutral-500">
-                                <i className="fas fa-cart-arrow-down text-4xl mb-3 opacity-40"></i>
-                                <p className="text-sm">Agrega productos para ver tu resumen aquí.</p>
-                            </div>
-                        ) : (
-                            <>
-                                <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1 mb-4">
-                                    {cart.map(item => (
-                                        <div key={item.id} className="bg-neutral-50 border border-neutral-200 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3">
-                                            <img src={item.img} alt={item.name} className="w-11 h-11 sm:w-12 sm:h-12 object-cover rounded-lg border border-neutral-200 flex-shrink-0" />
-                                            <div className="flex-grow min-w-0">
-                                                <h4 className="text-neutral-950 font-bold text-xs truncate">{item.name}</h4>
-                                                <p className="text-neutral-800 text-xs font-semibold mt-0.5">S/ {item.price * item.qty}.00</p>
-                                            </div>
-                                            <div className="flex items-center space-x-1.5 bg-white border border-neutral-300 rounded-lg px-2 py-0.5 flex-shrink-0">
-                                                <button onClick={() => updateQty(item.id, -1)} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">-</button>
-                                                <span className="text-neutral-950 text-xs font-bold">{item.qty}</span>
-                                                <button onClick={() => updateQty(item.id, 1)} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">+</button>
-                                            </div>
-                                            <button onClick={() => removeFromCart(item.id)} className="text-neutral-500 hover:text-neutral-950 text-xs px-1 flex-shrink-0" title="Eliminar producto">
-                                                <i className="fas fa-trash-alt"></i>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-
-                                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 mb-4 space-y-2.5">
-                                    <p className="text-[11px] uppercase tracking-wider text-neutral-600 font-bold">Datos para entrega (opcional)</p>
-                                    <input
-                                        type="text"
-                                        placeholder="Tu nombre (ej. Omar)"
-                                        value={customerName}
-                                        onChange={(e) => setCustomerName(e.target.value)}
-                                        className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
-                                    />
-                                    <input
-                                        type="text"
-                                        placeholder="Distrito en Lima (ej. San Miguel, Miraflores)"
-                                        value={customerDistrict}
-                                        onChange={(e) => setCustomerDistrict(e.target.value)}
-                                        className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
-                                    />
-                                </div>
-                            </>
                         )}
                     </div>
+                );
+            }
 
-                    {cart.length > 0 && (
-                        <div className="border-t border-neutral-200 pt-4 space-y-2">
-                            <div className="flex justify-between items-center text-xs text-neutral-600">
-                                <span>Subtotal productos:</span>
-                                <span>S/ {getSubtotal()}.00</span>
-                            </div>
-                            <div className="flex justify-between items-center text-xs text-neutral-600">
-                                <span>Delivery en Lima:</span>
-                                <span>S/ {SHIPPING_COST}.00</span>
-                            </div>
-                            <div className="flex justify-between items-center mb-3 pt-2 border-t border-neutral-200">
-                                <span className="text-neutral-900 uppercase tracking-wider text-xs font-bold">Total a Pagar:</span>
-                                <span className="text-neutral-950 text-xl sm:text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
-                            </div>
-                            <button 
-                                onClick={() => { setReceiptDownloaded(false); setCopiedSummary(false); setShowReceiptModal(true); }}
-                                className="w-full bg-neutral-950 hover:bg-neutral-800 text-white py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-md flex items-center justify-center space-x-2 text-xs transition"
-                            >
-                                <span>Generar Boleta y Pedir</span>
-                                <i className="fas fa-file-invoice-dollar text-base"></i>
-                            </button>
-                        </div>
-                    )}
-                </div>
-            );
+            const totalItems = cart.reduce(function (sum, item) { return sum + item.qty; }, 0);
 
             return (
                 <div className="min-h-screen flex flex-col relative pb-24 bg-[#f8f8f8] text-neutral-900">
                     <header className="py-8 sm:py-12 px-4 sm:px-6 border-b border-neutral-200 text-center bg-white">
                         <h1 className="text-4xl sm:text-6xl font-black tracking-[0.16em] sm:tracking-[0.22em] text-neutral-950 mb-2 sm:mb-3 break-words">{settings.brandTitle}</h1>
                         <p className="text-xs sm:text-sm tracking-[0.18em] sm:tracking-[0.25em] text-neutral-600 uppercase">{settings.brandSubtitle}</p>
-                        <div className="mt-5 inline-flex flex-wrap justify-center items-center border border-neutral-300 bg-neutral-50 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm gap-2 sm:gap-0">
+
+                        <div className="mt-5 inline-flex flex-wrap justify-center items-center border border-neutral-300 bg-neutral-50 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm gap-2">
                             <span className="text-neutral-800 font-medium"><i className="fas fa-motorcycle text-neutral-950 mr-2"></i>{settings.shippingText}</span>
-                            <span className="hidden sm:inline mx-4 text-neutral-300">|</span>
+                            <span className="hidden sm:inline mx-3 text-neutral-300">|</span>
                             <span className="text-neutral-800 font-medium"><i className="fas fa-mobile-alt text-neutral-950 mr-2"></i>Yape ({settings.yapeNumber})</span>
                             <button
                                 type="button"
                                 onClick={handleCopyYape}
-                                className="sm:ml-3 px-2.5 py-1 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white text-[11px] font-semibold transition"
+                                className="px-2.5 py-1 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white text-[11px] font-semibold transition"
                             >
-                                <i className={`fas ${copiedYape ? 'fa-check' : 'fa-copy'} mr-1`}></i>
+                                <i className={'fas ' + (copiedYape ? 'fa-check' : 'fa-copy') + ' mr-1'}></i>
                                 {copiedYape ? 'Copiado' : 'Copiar'}
                             </button>
                         </div>
 
-                        {/* SECCIÓN DE CONFIANZA */}
                         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
                             <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
                                 <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-neutral-950 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
@@ -440,24 +454,255 @@
                             </div>
                         </div>
 
-                        {/* BARRA DE BÚSQUEDA */}
                         <div className="mt-6 sm:mt-8 max-w-md mx-auto relative">
                             <span className="absolute inset-y-0 left-4 flex items-center text-neutral-500">
                                 <i className="fas fa-search"></i>
                             </span>
-                            <input 
-                                type="text" 
-                                placeholder="Busca tu perfume árabe (ej. Khamrah, Asad...)" 
+                            <input
+                                type="text"
+                                placeholder="Busca tu perfume árabe (ej. Khamrah, Asad...)"
                                 value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
+                                onChange={function (e) { setSearchTerm(e.target.value); }}
                                 className="w-full bg-neutral-50 border border-neutral-300 text-neutral-950 placeholder-neutral-400 pl-11 pr-16 py-3 rounded-full focus:outline-none focus:border-neutral-950 transition text-xs sm:text-sm"
                             />
                             {searchTerm && (
-                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-neutral-600 hover:text-neutral-950 text-[11px] font-bold uppercase tracking-wider">
+                                <button
+                                    type="button"
+                                    onClick={function () { setSearchTerm(''); }}
+                                    className="absolute inset-y-0 right-4 flex items-center text-neutral-600 hover:text-neutral-950 text-[11px] font-bold uppercase tracking-wider"
+                                >
                                     Limpiar
                                 </button>
                             )}
                         </div>
 
-                        {/* FILTROS POR MARCA */}
-                        <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-2 max-w-2
+                        <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
+                            {defaultBrands.map(function (brand) {
+                                const active = selectedBrand === brand;
+                                return (
+                                    <button
+                                        key={brand}
+                                        type="button"
+                                        onClick={function () { setSelectedBrand(brand); }}
+                                        className={'px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-wider transition-all border ' + (
+                                            active
+                                                ? 'bg-neutral-950 text-white border-neutral-950'
+                                                : 'bg-white text-neutral-700 border-neutral-300 hover:border-neutral-950 hover:text-neutral-950'
+                                        )}
+                                    >
+                                        {brand}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </header>
+
+                    <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 p-4 sm:p-6 md:p-10 items-start">
+                        <main className={(isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12') + ' w-full'}>
+                            {filteredPerfumes.length === 0 ? (
+                                <div className="text-center py-16 text-neutral-600 bg-white border border-neutral-200 rounded-2xl px-4">
+                                    <i className="fas fa-wine-bottle text-4xl sm:text-5xl mb-4 text-neutral-400"></i>
+                                    <p className="text-lg sm:text-xl font-medium">No encontramos perfumes que coincidan con tu búsqueda.</p>
+                                    <button
+                                        type="button"
+                                        onClick={function () { setSearchTerm(''); setSelectedBrand('Todos'); }}
+                                        className="mt-4 px-6 py-2 bg-neutral-950 text-white rounded-full text-xs uppercase tracking-wider font-bold hover:bg-neutral-800 transition"
+                                    >
+                                        Ver todos los perfumes
+                                    </button>
+                                </div>
+                            ) : (
+                                <div className={'grid grid-cols-1 sm:grid-cols-2 ' + (isCartOpen ? 'xl:grid-cols-2' : 'lg:grid-cols-3') + ' gap-5 sm:gap-7'}>
+                                    {filteredPerfumes.map(function (p) {
+                                        return (
+                                            <article key={p.id} className="bg-white border border-neutral-200 rounded-2xl overflow-hidden flex flex-col shadow-sm">
+                                                <div className="h-56 sm:h-64 overflow-hidden relative bg-neutral-100 m-3 sm:m-4 rounded-xl border border-neutral-200">
+                                                    <img src={p.img} alt={p.name + ' - Perfume árabe en Lima'} className="w-full h-full object-cover" />
+                                                    <span className="absolute top-3 right-3 bg-white border border-neutral-300 text-neutral-900 text-[10px] px-2.5 py-1 rounded-full uppercase tracking-wider font-bold">
+                                                        {detectBadge(p)}
+                                                    </span>
+                                                </div>
+                                                <div className="p-4 sm:p-6 pt-1 sm:pt-2 flex-grow flex flex-col justify-between">
+                                                    <div>
+                                                        <h2 className="text-lg sm:text-xl font-bold mb-1.5 text-neutral-950">{p.name}</h2>
+                                                        <p className="text-neutral-600 text-xs mb-5 sm:mb-6 leading-relaxed">{p.desc}</p>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-baseline justify-between mb-3 sm:mb-4 border-t border-neutral-100 pt-3">
+                                                            <span className="text-[11px] text-neutral-500 uppercase tracking-wider font-semibold">Precio</span>
+                                                            <p className="text-neutral-950 text-xl sm:text-2xl font-extrabold">S/ {p.price}.00</p>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={function () { addToCart(p); }}
+                                                            className="w-full bg-neutral-950 hover:bg-neutral-800 text-white py-3 sm:py-3.5 rounded-xl uppercase tracking-wider font-bold transition-all text-xs flex items-center justify-center space-x-2"
+                                                        >
+                                                            <span>Agregar al Pedido</span>
+                                                            <i className="fas fa-cart-plus text-sm"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </article>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </main>
+
+                        {isCartOpen && (
+                            <aside className="hidden lg:block lg:col-span-4 w-full sticky top-6">
+                                {renderCartContent()}
+                            </aside>
+                        )}
+                    </div>
+
+                    {isCartOpen && (
+                        <div className="lg:hidden fixed inset-0 bg-black/60 z-40 flex items-end sm:items-center justify-center p-3 sm:p-4">
+                            <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
+                                {renderCartContent()}
+                            </div>
+                        </div>
+                    )}
+
+                    <section className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-neutral-200 mt-10 w-full">
+                        <h2 className="text-2xl sm:text-3xl font-extrabold text-neutral-950 text-center mb-6 sm:mb-8">Preguntas Frecuentes sobre Perfumes Árabes en Lima</h2>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
+                            <div className="bg-white border border-neutral-200 p-5 sm:p-6 rounded-xl">
+                                <h3 className="text-neutral-950 font-bold mb-2"><i className="fas fa-check-circle text-neutral-900 mr-2"></i>¿Los perfumes árabes son 100% originales?</h3>
+                                <p className="text-neutral-600 leading-relaxed">Sí, en ARENAS trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima.</p>
+                            </div>
+                            <div className="bg-white border border-neutral-200 p-5 sm:p-6 rounded-xl">
+                                <h3 className="text-neutral-950 font-bold mb-2"><i className="fas fa-wallet text-neutral-900 mr-2"></i>¿Cómo se realizan los pagos?</h3>
+                                <p className="text-neutral-600 leading-relaxed">Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda ({settings.yapeNumber}).</p>
+                            </div>
+                            <div className="bg-white border border-neutral-200 p-5 sm:p-6 rounded-xl">
+                                <h3 className="text-neutral-950 font-bold mb-2"><i className="fas fa-motorcycle text-neutral-900 mr-2"></i>¿Cómo funciona el delivery en Lima?</h3>
+                                <p className="text-neutral-600 leading-relaxed">Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta.</p>
+                            </div>
+                            <div className="bg-white border border-neutral-200 p-5 sm:p-6 rounded-xl">
+                                <h3 className="text-neutral-950 font-bold mb-2"><i className="fas fa-star text-neutral-900 mr-2"></i>¿Qué marcas de perfumes árabes recomiendan?</h3>
+                                <p className="text-neutral-600 leading-relaxed">Entre los favoritos del público se encuentran Khamrah y Asad de Lattafa, Hawas de Rasasi y 9PM de Afnan, ideales por su gran fijación y proyección.</p>
+                            </div>
+                        </div>
+                    </section>
+
+                    {showReceiptModal && (
+                        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                            <div className="bg-white border border-neutral-300 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto text-neutral-900">
+                                <button
+                                    type="button"
+                                    onClick={function () { setShowReceiptModal(false); }}
+                                    className="absolute top-3 right-3 text-neutral-600 hover:text-neutral-950 text-lg p-1"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+
+                                <h3 className="text-lg sm:text-xl font-extrabold text-neutral-950 text-center mb-3 sm:mb-4 uppercase tracking-wider">Vista Previa de Boleta</h3>
+
+                                <div ref={receiptRef} className="bg-white border border-neutral-300 p-4 sm:p-6 rounded-xl text-neutral-900 font-mono text-xs mb-4 sm:mb-6">
+                                    <div className="text-center border-b border-neutral-300 pb-3 mb-3">
+                                        <h2 className="text-xl sm:text-2xl font-black text-neutral-950 tracking-widest">{settings.brandTitle}</h2>
+                                        <p className="text-neutral-600 text-[10px] uppercase mt-1">Perfumes Árabes Originales - Lima</p>
+                                        <p className="text-neutral-700 text-[10px] mt-1">Cliente: {cleanName} | Distrito: {cleanDistrict}</p>
+                                        <p className="text-neutral-500 text-[10px] mt-0.5">Fecha: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
+                                    </div>
+
+                                    <div className="space-y-2.5 mb-3">
+                                        {cart.map(function (item) {
+                                            return (
+                                                <div key={item.id} className="flex justify-between border-b border-neutral-200 pb-2 gap-2">
+                                                    <div className="min-w-0">
+                                                        <p className="font-bold text-neutral-950 text-xs break-words">{item.name}</p>
+                                                        <p className="text-neutral-600 text-[10px]">Cant: {item.qty} x S/ {item.price}.00</p>
+                                                    </div>
+                                                    <p className="text-neutral-950 font-bold flex-shrink-0">S/ {item.price * item.qty}.00</p>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+
+                                    <div className="space-y-1.5 border-t border-neutral-300 pt-2.5 text-[11px] text-neutral-700">
+                                        <div className="flex justify-between">
+                                            <span>Subtotal productos:</span>
+                                            <span>S/ {getSubtotal()}.00</span>
+                                        </div>
+                                        <div className="flex justify-between">
+                                            <span>Delivery Lima:</span>
+                                            <span>S/ {SHIPPING_COST}.00</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="border-t border-neutral-300 mt-2.5 pt-2.5 flex justify-between items-center text-sm">
+                                        <span className="font-bold uppercase tracking-wider text-neutral-800 text-xs">Total a Pagar:</span>
+                                        <span className="text-neutral-950 text-lg sm:text-xl font-extrabold">S/ {getTotalPrice()}.00</span>
+                                    </div>
+
+                                    <div className="mt-4 text-center text-[10px] text-neutral-600 border-t border-dashed border-neutral-300 pt-2.5">
+                                        <p>Yape / Plin: {settings.yapeNumber}</p>
+                                        <p className="mt-1">¡Gracias por tu preferencia en Lima!</p>
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2.5">
+                                    <button
+                                        type="button"
+                                        onClick={downloadReceiptImage}
+                                        className="w-full bg-neutral-950 hover:bg-neutral-800 text-white py-3 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                    >
+                                        <i className="fas fa-download text-sm"></i>
+                                        <span>{receiptDownloaded ? 'Boleta Descargada (Descargar otra vez)' : '1. Descargar Imagen de Boleta'}</span>
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopySummary}
+                                        className="w-full bg-neutral-100 hover:bg-neutral-200 border border-neutral-300 text-neutral-900 py-2.5 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                    >
+                                        <i className={'fas ' + (copiedSummary ? 'fa-check' : 'fa-copy') + ' text-sm'}></i>
+                                        <span>{copiedSummary ? 'Resumen Copiado' : 'Copiar Resumen en Texto'}</span>
+                                    </button>
+                                    <a
+                                        href={buildWhatsAppUrl()}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={function () { setShowReceiptModal(false); setIsCartOpen(false); }}
+                                        className="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-3 rounded-xl font-bold uppercase tracking-wider transition text-xs flex items-center justify-center space-x-2"
+                                    >
+                                        <i className="fab fa-whatsapp text-base"></i>
+                                        <span>2. Enviar Pedido por WhatsApp</span>
+                                    </a>
+                                    <button
+                                        type="button"
+                                        onClick={function () { setShowReceiptModal(false); }}
+                                        className="w-full bg-white border border-neutral-300 text-neutral-600 hover:text-neutral-950 py-2 rounded-xl text-xs uppercase tracking-wider transition"
+                                    >
+                                        Volver al carrito
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center space-x-3">
+                        <button
+                            type="button"
+                            onClick={function () { setIsCartOpen(!isCartOpen); }}
+                            className="bg-neutral-950 hover:bg-neutral-800 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-full font-bold shadow-lg flex items-center space-x-2 sm:space-x-3 transition-all hover:scale-105 text-xs sm:text-sm"
+                        >
+                            <i className={'fas ' + (isCartOpen ? 'fa-columns' : 'fa-shopping-cart') + ' text-base sm:text-xl'}></i>
+                            <span>{isCartOpen ? 'Ocultar Resumen' : 'Ver Pedido (' + totalItems + ')'}</span>
+                        </button>
+                    </div>
+
+                    <footer className="py-8 sm:py-10 border-t border-neutral-200 text-center text-neutral-600 text-xs sm:text-sm bg-white px-4">
+                        <p>&copy; 2026 {settings.brandTitle}. Todos los derechos reservados.</p>
+                        <p className="mt-2 text-xs text-neutral-500">Atención personalizada vía WhatsApp: {settings.whatsapp}</p>
+                    </footer>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
