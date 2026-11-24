@@ -3,19 +3,75 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ARENAS | Perfumes Árabes Originales en Lima - Lattafa, Rasasi y Más</title>
+    <title>ARENAS | Perfumes Árabes Originales y Decants en Lima - Lattafa, Rasasi</title>
     
     <!-- ETIQUETA DE GOOGLE SEARCH CONSOLE -->
     <meta name="google-site-verification" content="b-YjZAn1x0ai3hTZgX6fH4z_e5kpKlsoQGAz4tTgUFk" />
     
-    <meta name="description" content="Venta de perfumes árabes originales en Lima, Perú. Encuentra Khamrah, Hawas Ice, 9PM, Asad y decants. Envíos seguros a todo Lima y pago por Yape.">
-    <meta name="keywords" content="perfumes árabes Lima, Khamrah Lattafa, Hawas Ice Rasasi, perfumes originales Perú, decants de perfumes, Lattafa Lima, Asad Lattafa">
+    <meta name="description" content="Compra perfumes árabes originales y decants de 5 ml, 10 ml y 15 ml en Lima, Perú. Lattafa Khamrah, Asad Bourbon, Rasasi Hawas Ice y más. Pago por Yape/Plin y delivery en Lima.">
+    <meta name="keywords" content="perfumes árabes Lima, decants perfumes árabes Lima, Khamrah Lattafa Perú, Hawas Ice Rasasi, Asad Bourbon, perfumes originales San Miguel Lima, Tienda ARENAS">
+    <link rel="canonical" href="https://tienda-arenas.onrender.com/" />
+
+    <!-- OPEN GRAPH PARA WHATSAPP Y REDES SOCIALES -->
+    <meta property="og:title" content="ARENAS | Perfumes Árabes Originales y Decants en Lima" />
+    <meta property="og:description" content="Arma tu pedido online, genera tu boleta digital al instante y paga seguro con Yape o Plin. Delivery en todo Lima." />
+    <meta property="og:url" content="https://tienda-arenas.onrender.com/" />
+    <meta property="og:type" content="website" />
+
+    <!-- DATOS ESTRUCTURADOS JSON-LD PARA GOOGLE -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Store",
+          "name": "Tienda ARENAS",
+          "description": "Tienda online de perfumes árabes originales y decants en Lima, Perú.",
+          "url": "https://tienda-arenas.onrender.com/",
+          "areaServed": {
+            "@type": "City",
+            "name": "Lima"
+          },
+          "paymentAccepted": "Yape, Plin",
+          "currenciesAccepted": "PEN"
+        },
+        {
+          "@type": "FAQPage",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "¿Los perfumes árabes son 100% originales?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Sí, en ARENAS trabajamos exclusivamente con perfumes árabes originales de marcas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Cómo se realizan los pagos?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "¿Cómo funciona el delivery en Lima?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta."
+              }
+            }
+          ]
+        }
+      ]
+    }
+    </script>
 
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <!-- Librería para convertir la boleta en imagen -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
@@ -79,9 +135,10 @@
             const [cart, setCart] = useState([]);
             const [isCartOpen, setIsCartOpen] = useState(false);
             const [showReceiptModal, setShowReceiptModal] = useState(false);
+            const [receiptDownloaded, setReceiptDownloaded] = useState(false);
             const receiptRef = useRef(null);
 
-            const SHIPPING_COST = 12; // Costo fijo de envío en Lima
+            const SHIPPING_COST = 12;
 
             useEffect(() => {
                 fetch('/api/data')
@@ -95,7 +152,6 @@
             const { settings, perfumes } = storeData;
             const defaultBrands = ['Todos', 'Lattafa', 'Rasasi', 'Afnan', 'Armaf', 'Al Haramain'];
 
-            // Filtrar perfumes
             const filteredPerfumes = perfumes ? perfumes.filter(p => {
                 const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                                       p.desc.toLowerCase().includes(searchTerm.toLowerCase());
@@ -103,7 +159,6 @@
                 return matchesSearch && matchesBrand;
             }) : [];
 
-            // Funciones del Carrito
             const addToCart = (perfume) => {
                 const existing = cart.find(item => item.id === perfume.id);
                 if (existing) {
@@ -111,6 +166,7 @@
                 } else {
                     setCart([...cart, { ...perfume, qty: 1 }]);
                 }
+                setIsCartOpen(true);
             };
 
             const updateQty = (id, delta) => {
@@ -135,26 +191,10 @@
                 return getSubtotal() + (cart.length > 0 ? SHIPPING_COST : 0);
             };
 
-            const downloadReceiptAndCheckout = async () => {
-                if (cart.length === 0) return;
-
-                if (receiptRef.current) {
-                    try {
-                        const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#121212', scale: 2 });
-                        const image = canvas.toDataURL("image/png");
-                        
-                        const link = document.createElement('a');
-                        link.href = image;
-                        link.download = `Boleta_ARENAS_${Date.now()}.png`;
-                        link.click();
-                    } catch (error) {
-                        console.error("Error al generar imagen de boleta:", error);
-                    }
-                }
-
-                let orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('%0A');
-                let subtotal = getSubtotal();
-                let total = getTotalPrice();
+            const buildWhatsAppUrl = () => {
+                const orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('\n');
+                const subtotal = getSubtotal();
+                const total = getTotalPrice();
 
                 const msg = encodeURIComponent(
                     `🧾 *NOTA DE PEDIDO - ${settings.brandTitle}* 🧾\n` +
@@ -162,18 +202,31 @@
                     `👤 *Cliente:* Nuevo Pedido Web\n` +
                     `💳 *Pago:* Yape / Plin (${settings.yapeNumber})\n` +
                     `----------------------------------------\n` +
-                    `🛍️ *DETALLE DE PRODUCTOS:* \n${orderDetails}\n` +
+                    `🛍️ *DETALLE DE PRODUCTOS:*\n${orderDetails}\n` +
                     `----------------------------------------\n` +
                     `📦 *Subtotal:* S/ ${subtotal}.00\n` +
                     `🛵 *Delivery en Lima:* S/ ${SHIPPING_COST}.00\n` +
                     `💰 *TOTAL A PAGAR: S/ ${total}.00*\n` +
                     `----------------------------------------\n` +
-                    `✨ Adjunto mi boleta generada. ¿Me confirman stock y datos para coordinar la entrega?`
+                    `✨ Adjunto mi boleta en imagen. ¿Me confirman stock y datos para coordinar la entrega?`
                 );
-                
-                window.open(`https://wa.me/${settings.whatsapp}?text=${msg}`, '_blank');
-                setShowReceiptModal(false);
-                setIsCartOpen(false);
+
+                return `https://wa.me/${settings.whatsapp}?text=${msg}`;
+            };
+
+            const downloadReceiptImage = async () => {
+                if (!receiptRef.current) return;
+                try {
+                    const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#121212', scale: 2 });
+                    const image = canvas.toDataURL("image/png");
+                    const link = document.createElement('a');
+                    link.href = image;
+                    link.download = `Boleta_ARENAS_${Date.now()}.png`;
+                    link.click();
+                    setReceiptDownloaded(true);
+                } catch (error) {
+                    console.error("Error al generar imagen de boleta:", error);
+                }
             };
 
             return (
@@ -255,7 +308,7 @@
                         </div>
                     </header>
 
-                    {/* CONTENEDOR PRINCIPAL CON PESTAÑA DOBLE DINÁMICA */}
+                    {/* CONTENEDOR PRINCIPAL */}
                     <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-8 p-6 md:p-10 items-start transition-all">
                         
                         <main className={`${isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all duration-300 w-full`}>
@@ -273,20 +326,19 @@
                             ) : (
                                 <div className={`grid grid-cols-1 ${isCartOpen ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'} gap-8 transition-all`}>
                                     {filteredPerfumes.map((p, index) => (
-                                        <div 
+                                        <article 
                                             key={p.id} 
                                             className="perfume-card fade-in-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl"
                                             style={{ animationDelay: `${index * 0.08}s` }}
                                         >
-                                            {/* IMAGEN CON MARCO DORADO Y SOMBRA DIFUMINADA */}
                                             <div className="h-64 overflow-hidden relative bg-black m-4 rounded-xl perfume-img-container">
                                                 <div className="absolute inset-0 bg-gradient-to-t from-[#101010]/80 via-transparent to-transparent opacity-40 z-10"></div>
-                                                <img src={p.img} alt={p.name} className="perfume-img w-full h-full object-cover" />
+                                                <img src={p.img} alt={`${p.name} - Perfume árabe original en Lima`} className="perfume-img w-full h-full object-cover" />
                                                 <span className="absolute top-3 right-3 z-20 bg-black/80 backdrop-blur border border-yellow-600/60 text-yellow-400 text-[10px] px-2.5 py-1 rounded-full uppercase tracking-widest font-bold shadow-md">Stock Árabe</span>
                                             </div>
                                             <div className="p-6 pt-2 flex-grow flex flex-col justify-between relative z-20">
                                                 <div>
-                                                    <h3 className="text-xl font-bold mb-2 tracking-wide text-white">{p.name}</h3>
+                                                    <h2 className="text-xl font-bold mb-2 tracking-wide text-white">{p.name}</h2>
                                                     <p className="perfume-desc text-gray-400 text-xs mb-6 leading-relaxed">{p.desc}</p>
                                                 </div>
                                                 <div>
@@ -300,7 +352,7 @@
                                                     </button>
                                                 </div>
                                             </div>
-                                        </div>
+                                        </article>
                                     ))}
                                 </div>
                             )}
@@ -368,7 +420,7 @@
                                                 <span className="gold-text text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
                                             </div>
                                             <button 
-                                                onClick={() => setShowReceiptModal(true)}
+                                                onClick={() => { setReceiptDownloaded(false); setShowReceiptModal(true); }}
                                                 className="w-full bg-green-600 hover:bg-green-500 text-white py-3.5 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 text-xs transition"
                                             >
                                                 <span>Generar Boleta y Pedir</span>
@@ -382,7 +434,7 @@
 
                     </div>
 
-                    {/* SECCIÓN SEO: PREGUNTAS FRECUENTES SOBRE PERFUMES ÁRABES EN LIMA */}
+                    {/* SECCIÓN SEO: PREGUNTAS FRECUENTES */}
                     <section className="max-w-5xl mx-auto px-6 py-12 border-t border-gray-900 mt-12 w-full">
                         <h2 className="text-3xl font-bold gold-text text-center mb-8 tracking-wider">Preguntas Frecuentes sobre Perfumes Árabes en Lima</h2>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
@@ -405,7 +457,7 @@
                         </div>
                     </section>
 
-                    {/* MODAL / VISOR DE BOLETA DIGITAL ANTES DE ENVIAR */}
+                    {/* MODAL DE BOLETA DIGITAL SIN BLOQUEOS DE POPUP */}
                     {showReceiptModal && (
                         <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4">
                             <div className="bg-[#121212] border border-yellow-600/50 rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
@@ -418,7 +470,6 @@
 
                                 <h3 className="text-xl font-bold gold-text text-center mb-4 uppercase tracking-widest">Vista Previa de Boleta</h3>
 
-                                {/* CONTENEDOR DE LA BOLETA QUE SE CONVERTIRÁ EN IMAGEN */}
                                 <div ref={receiptRef} className="bg-[#181818] border border-yellow-600/30 p-6 rounded-xl text-white font-mono text-xs mb-6 shadow-inner">
                                     <div className="text-center border-b border-gray-700 pb-4 mb-4">
                                         <h2 className="text-2xl font-bold gold-text tracking-widest">{settings.brandTitle}</h2>
@@ -438,7 +489,6 @@
                                         ))}
                                     </div>
 
-                                    {/* DESGLOSE DE ENVÍO EN LA BOLETA */}
                                     <div className="space-y-1.5 border-t border-gray-700 pt-3 text-[11px] text-gray-300">
                                         <div className="flex justify-between">
                                             <span>Subtotal productos:</span>
@@ -463,15 +513,25 @@
 
                                 <div className="space-y-3">
                                     <button 
-                                        onClick={downloadReceiptAndCheckout}
-                                        className="w-full gold-bg py-3.5 rounded-xl font-bold uppercase tracking-widest hover:bg-yellow-500 transition shadow-lg text-xs flex items-center justify-center space-x-2"
+                                        onClick={downloadReceiptImage}
+                                        className="w-full gold-bg py-3 rounded-xl font-bold uppercase tracking-widest hover:bg-yellow-500 transition shadow-lg text-xs flex items-center justify-center space-x-2"
                                     >
-                                        <span>📸 Descargar Boleta e Ir a WhatsApp</span>
-                                        <i className="fab fa-whatsapp text-lg"></i>
+                                        <i className="fas fa-download text-sm"></i>
+                                        <span>{receiptDownloaded ? 'Boleta Descargada (Descargar otra vez)' : '1. Descargar Imagen de Boleta'}</span>
                                     </button>
+                                    <a 
+                                        href={buildWhatsAppUrl()}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        onClick={() => { setShowReceiptModal(false); setIsCartOpen(false); }}
+                                        className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest transition shadow-lg text-xs flex items-center justify-center space-x-2"
+                                    >
+                                        <i className="fab fa-whatsapp text-lg"></i>
+                                        <span>2. Enviar Pedido por WhatsApp</span>
+                                    </a>
                                     <button 
                                         onClick={() => setShowReceiptModal(false)}
-                                        className="w-full bg-neutral-900 border border-gray-700 text-gray-400 hover:text-white py-2.5 rounded-xl text-xs uppercase tracking-widest transition"
+                                        className="w-full bg-neutral-900 border border-gray-700 text-gray-400 hover:text-white py-2 rounded-xl text-xs uppercase tracking-widest transition"
                                     >
                                         Volver al carrito
                                     </button>
