@@ -75,51 +75,37 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        html, body { overflow-x: hidden; background-color: #050505; color: #f5f5f5; font-family: 'Didot', 'Georgia', serif; }
-        .gold-text { color: #d4af37; }
-        .gold-bg { background-color: #d4af37; color: #0a0a0a; }
+        html, body {
+            overflow-x: hidden;
+            background-color: #f8f8f8;
+            color: #111111;
+            font-family: 'Helvetica Neue', 'Arial', sans-serif;
+        }
 
         @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(16px); }
+            from { opacity: 0; transform: translateY(14px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
         .fade-in-card {
-            animation: fadeInUp 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
+            animation: fadeInUp 0.45s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
             opacity: 0;
         }
 
         .perfume-card {
-            transition: all 0.35s cubic-bezier(0.165, 0.84, 0.44, 1);
-            position: relative;
+            transition: all 0.25s ease;
         }
         .perfume-card:hover {
-            transform: translateY(-6px);
-            border-color: #d4af37;
-            box-shadow: 0 15px 30px -10px rgba(212, 175, 55, 0.25);
-        }
-
-        .perfume-img-container {
-            border: 1px solid rgba(212, 175, 55, 0.3);
-            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.8), 0 10px 25px -5px rgba(0, 0, 0, 0.9);
-            position: relative;
+            transform: translateY(-4px);
+            border-color: #111111;
+            box-shadow: 0 12px 24px -10px rgba(0, 0, 0, 0.14);
         }
 
         .perfume-img {
-            transition: transform 0.6s cubic-bezier(0.165, 0.84, 0.44, 1), filter 0.4s ease;
-            filter: brightness(0.95);
+            transition: transform 0.45s ease;
         }
         .perfume-card:hover .perfume-img {
-            transform: scale(1.08);
-            filter: brightness(1.08);
-        }
-
-        .perfume-desc {
-            transition: color 0.3s ease, transform 0.3s ease;
-        }
-        .perfume-card:hover .perfume-desc {
-            color: #ffffff;
-            transform: translateX(3px);
+            transform: scale(1.05);
         }
     </style>
 </head>
@@ -128,14 +114,33 @@
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
+        const CART_STORAGE_KEY = 'arenas_cart_v1';
+
+        const detectBadge = (perfume) => {
+            const text = `${perfume.name || ''} ${perfume.desc || ''}`.toLowerCase();
+            if (text.includes('decant') || text.includes('ml')) return 'Formato / Decant';
+            if (text.includes('verano') || text.includes('fresco') || text.includes('hawas')) return 'Fresco / Diario';
+            if (text.includes('invierno') || text.includes('noche') || text.includes('khamrah') || text.includes('asad')) return 'Intenso / Noche';
+            return 'Original';
+        };
+
         const App = () => {
             const [storeData, setStoreData] = useState(null);
             const [searchTerm, setSearchTerm] = useState('');
             const [selectedBrand, setSelectedBrand] = useState('Todos');
-            const [cart, setCart] = useState([]);
+            const [cart, setCart] = useState(() => {
+                try {
+                    const saved = localStorage.getItem(CART_STORAGE_KEY);
+                    return saved ? JSON.parse(saved) : [];
+                } catch {
+                    return [];
+                }
+            });
             const [isCartOpen, setIsCartOpen] = useState(false);
             const [showReceiptModal, setShowReceiptModal] = useState(false);
             const [receiptDownloaded, setReceiptDownloaded] = useState(false);
+            const [copiedYape, setCopiedYape] = useState(false);
+            const [copiedSummary, setCopiedSummary] = useState(false);
             const [customerName, setCustomerName] = useState('');
             const [customerDistrict, setCustomerDistrict] = useState('');
             const receiptRef = useRef(null);
@@ -149,7 +154,15 @@
                     .catch(err => console.error("Error al cargar datos:", err));
             }, []);
 
-            if (!storeData) return <div className="min-h-screen flex items-center justify-center text-xl sm:text-2xl gold-text px-4 text-center">Cargando tienda ARENAS...</div>;
+            useEffect(() => {
+                try {
+                    localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(cart));
+                } catch {
+                    // Ignorar si el almacenamiento no está disponible
+                }
+            }, [cart]);
+
+            if (!storeData) return <div className="min-h-screen flex items-center justify-center text-lg sm:text-xl font-semibold text-neutral-900 px-4 text-center">Cargando tienda ARENAS...</div>;
 
             const { settings, perfumes } = storeData;
             const defaultBrands = ['Todos', 'Lattafa', 'Rasasi', 'Afnan', 'Armaf', 'Al Haramain'];
@@ -184,6 +197,10 @@
                 setCart(cart.filter(item => item.id !== id));
             };
 
+            const clearCart = () => {
+                setCart([]);
+            };
+
             const getSubtotal = () => {
                 return cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
             };
@@ -194,6 +211,23 @@
 
             const cleanName = customerName.trim() || 'Cliente Web';
             const cleanDistrict = customerDistrict.trim() || 'Por coordinar (Lima)';
+
+            const buildPlainOrderText = () => {
+                const orderDetails = cart.map(item => `• ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('\n');
+                const subtotal = getSubtotal();
+                const total = getTotalPrice();
+
+                return (
+                    `NOTA DE PEDIDO - ${settings.brandTitle}\n` +
+                    `Cliente: ${cleanName}\n` +
+                    `Distrito (Lima): ${cleanDistrict}\n` +
+                    `Pago: Yape / Plin (${settings.yapeNumber})\n` +
+                    `Productos:\n${orderDetails}\n` +
+                    `Subtotal: S/ ${subtotal}.00\n` +
+                    `Delivery Lima: S/ ${SHIPPING_COST}.00\n` +
+                    `TOTAL A PAGAR: S/ ${total}.00`
+                );
+            };
 
             const buildWhatsAppUrl = () => {
                 const orderDetails = cart.map(item => `▪️ ${item.qty}x ${item.name} - S/ ${item.price * item.qty}.00`).join('\n');
@@ -219,10 +253,30 @@
                 return `https://wa.me/${settings.whatsapp}?text=${msg}`;
             };
 
+            const handleCopyYape = async () => {
+                try {
+                    await navigator.clipboard.writeText(String(settings.yapeNumber));
+                    setCopiedYape(true);
+                    setTimeout(() => setCopiedYape(false), 2000);
+                } catch {
+                    setCopiedYape(false);
+                }
+            };
+
+            const handleCopySummary = async () => {
+                try {
+                    await navigator.clipboard.writeText(buildPlainOrderText());
+                    setCopiedSummary(true);
+                    setTimeout(() => setCopiedSummary(false), 2000);
+                } catch {
+                    setCopiedSummary(false);
+                }
+            };
+
             const downloadReceiptImage = async () => {
                 if (!receiptRef.current) return;
                 try {
-                    const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#121212', scale: 2 });
+                    const canvas = await html2canvas(receiptRef.current, { backgroundColor: '#ffffff', scale: 2 });
                     const image = canvas.toDataURL("image/png");
                     const link = document.createElement('a');
                     link.href = image;
@@ -235,65 +289,75 @@
             };
 
             const renderCartContent = () => (
-                <div className="bg-[#121212] border border-yellow-600/40 rounded-2xl p-4 sm:p-6 shadow-2xl flex flex-col justify-between">
+                <div className="bg-white border border-neutral-200 rounded-2xl p-4 sm:p-6 shadow-xl flex flex-col justify-between text-neutral-900">
                     <div>
-                        <div className="flex justify-between items-center border-b border-gray-800 pb-3 mb-4">
-                            <h3 className="text-lg sm:text-xl font-bold gold-text flex items-center space-x-2">
+                        <div className="flex justify-between items-center border-b border-neutral-200 pb-3 mb-4 gap-2">
+                            <h3 className="text-lg sm:text-xl font-bold text-neutral-950 flex items-center space-x-2">
                                 <i className="fas fa-shopping-bag"></i>
-                                <span>Tu Cotización de Pedido</span>
+                                <span>Tu Pedido</span>
                             </h3>
-                            <button 
-                                onClick={() => setIsCartOpen(false)} 
-                                className="text-gray-400 hover:text-white bg-neutral-900 border border-gray-700 w-8 h-8 rounded-full flex items-center justify-center transition"
-                                title="Cerrar resumen"
-                            >
-                                <i className="fas fa-times"></i>
-                            </button>
+                            <div className="flex items-center gap-2">
+                                {cart.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={clearCart}
+                                        className="text-[11px] font-semibold text-neutral-600 hover:text-neutral-950 underline px-1.5 py-1"
+                                    >
+                                        Vaciar
+                                    </button>
+                                )}
+                                <button 
+                                    onClick={() => setIsCartOpen(false)} 
+                                    className="text-neutral-600 hover:text-neutral-950 bg-neutral-100 border border-neutral-300 w-8 h-8 rounded-full flex items-center justify-center transition"
+                                    title="Cerrar resumen"
+                                >
+                                    <i className="fas fa-times"></i>
+                                </button>
+                            </div>
                         </div>
 
                         {cart.length === 0 ? (
-                            <div className="text-center py-12 text-gray-500">
-                                <i className="fas fa-cart-arrow-down text-4xl mb-3 opacity-30"></i>
+                            <div className="text-center py-12 text-neutral-500">
+                                <i className="fas fa-cart-arrow-down text-4xl mb-3 opacity-40"></i>
                                 <p className="text-sm">Agrega productos para ver tu resumen aquí.</p>
                             </div>
                         ) : (
                             <>
                                 <div className="space-y-3 max-h-[42vh] overflow-y-auto pr-1 mb-4">
                                     {cart.map(item => (
-                                        <div key={item.id} className="bg-black/60 border border-gray-800 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3">
-                                            <img src={item.img} alt={item.name} className="w-11 h-11 sm:w-12 sm:h-12 object-cover rounded-lg border border-gray-700 flex-shrink-0" />
+                                        <div key={item.id} className="bg-neutral-50 border border-neutral-200 p-2.5 sm:p-3 rounded-xl flex items-center justify-between gap-2 sm:gap-3">
+                                            <img src={item.img} alt={item.name} className="w-11 h-11 sm:w-12 sm:h-12 object-cover rounded-lg border border-neutral-200 flex-shrink-0" />
                                             <div className="flex-grow min-w-0">
-                                                <h4 className="text-white font-bold text-xs truncate">{item.name}</h4>
-                                                <p className="gold-text text-xs font-bold mt-0.5">S/ {item.price * item.qty}.00</p>
+                                                <h4 className="text-neutral-950 font-bold text-xs truncate">{item.name}</h4>
+                                                <p className="text-neutral-800 text-xs font-semibold mt-0.5">S/ {item.price * item.qty}.00</p>
                                             </div>
-                                            <div className="flex items-center space-x-1.5 bg-neutral-900 border border-gray-700 rounded-lg px-2 py-0.5 flex-shrink-0">
-                                                <button onClick={() => updateQty(item.id, -1)} className="text-gray-400 hover:text-white text-xs px-1">-</button>
-                                                <span className="text-white text-xs font-bold">{item.qty}</span>
-                                                <button onClick={() => updateQty(item.id, 1)} className="text-gray-400 hover:text-white text-xs px-1">+</button>
+                                            <div className="flex items-center space-x-1.5 bg-white border border-neutral-300 rounded-lg px-2 py-0.5 flex-shrink-0">
+                                                <button onClick={() => updateQty(item.id, -1)} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">-</button>
+                                                <span className="text-neutral-950 text-xs font-bold">{item.qty}</span>
+                                                <button onClick={() => updateQty(item.id, 1)} className="text-neutral-600 hover:text-neutral-950 text-xs font-bold px-1">+</button>
                                             </div>
-                                            <button onClick={() => removeFromCart(item.id)} className="text-red-500 hover:text-red-400 text-xs px-1 flex-shrink-0" title="Eliminar producto">
+                                            <button onClick={() => removeFromCart(item.id)} className="text-neutral-500 hover:text-neutral-950 text-xs px-1 flex-shrink-0" title="Eliminar producto">
                                                 <i className="fas fa-trash-alt"></i>
                                             </button>
                                         </div>
                                     ))}
                                 </div>
 
-                                {/* CAMPOS OPCIONALES DE NOMBRE Y DISTRITO */}
-                                <div className="bg-black/50 border border-gray-800 rounded-xl p-3 mb-4 space-y-2.5">
-                                    <p className="text-[11px] uppercase tracking-wider text-gray-400 font-bold">Datos para entrega (opcional)</p>
+                                <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3 mb-4 space-y-2.5">
+                                    <p className="text-[11px] uppercase tracking-wider text-neutral-600 font-bold">Datos para entrega (opcional)</p>
                                     <input
                                         type="text"
                                         placeholder="Tu nombre (ej. Omar)"
                                         value={customerName}
                                         onChange={(e) => setCustomerName(e.target.value)}
-                                        className="w-full bg-[#161616] border border-gray-700 text-white placeholder-gray-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-yellow-500"
+                                        className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
                                     />
                                     <input
                                         type="text"
                                         placeholder="Distrito en Lima (ej. San Miguel, Miraflores)"
                                         value={customerDistrict}
                                         onChange={(e) => setCustomerDistrict(e.target.value)}
-                                        className="w-full bg-[#161616] border border-gray-700 text-white placeholder-gray-500 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-yellow-500"
+                                        className="w-full bg-white border border-neutral-300 text-neutral-900 placeholder-neutral-400 px-3 py-2 rounded-lg text-xs focus:outline-none focus:border-neutral-950"
                                     />
                                 </div>
                             </>
@@ -301,22 +365,22 @@
                     </div>
 
                     {cart.length > 0 && (
-                        <div className="border-t border-gray-800 pt-4 space-y-2">
-                            <div className="flex justify-between items-center text-xs text-gray-400">
+                        <div className="border-t border-neutral-200 pt-4 space-y-2">
+                            <div className="flex justify-between items-center text-xs text-neutral-600">
                                 <span>Subtotal productos:</span>
                                 <span>S/ {getSubtotal()}.00</span>
                             </div>
-                            <div className="flex justify-between items-center text-xs text-gray-400">
+                            <div className="flex justify-between items-center text-xs text-neutral-600">
                                 <span>Delivery en Lima:</span>
                                 <span>S/ {SHIPPING_COST}.00</span>
                             </div>
-                            <div className="flex justify-between items-center mb-3 pt-2 border-t border-gray-800">
-                                <span className="text-gray-200 uppercase tracking-widest text-xs font-bold">Total a Pagar:</span>
-                                <span className="gold-text text-xl sm:text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
+                            <div className="flex justify-between items-center mb-3 pt-2 border-t border-neutral-200">
+                                <span className="text-neutral-900 uppercase tracking-wider text-xs font-bold">Total a Pagar:</span>
+                                <span className="text-neutral-950 text-xl sm:text-2xl font-extrabold">S/ {getTotalPrice()}.00</span>
                             </div>
                             <button 
-                                onClick={() => { setReceiptDownloaded(false); setShowReceiptModal(true); }}
-                                className="w-full bg-green-600 hover:bg-green-500 text-white py-3.5 rounded-xl font-bold uppercase tracking-widest shadow-lg flex items-center justify-center space-x-2 text-xs transition"
+                                onClick={() => { setReceiptDownloaded(false); setCopiedSummary(false); setShowReceiptModal(true); }}
+                                className="w-full bg-neutral-950 hover:bg-neutral-800 text-white py-3.5 rounded-xl font-bold uppercase tracking-wider shadow-md flex items-center justify-center space-x-2 text-xs transition"
                             >
                                 <span>Generar Boleta y Pedir</span>
                                 <i className="fas fa-file-invoice-dollar text-base"></i>
@@ -327,50 +391,58 @@
             );
 
             return (
-                <div className="min-h-screen flex flex-col relative pb-24">
-                    <header className="py-8 sm:py-12 px-4 sm:px-6 border-b border-gray-900 text-center relative bg-gradient-to-b from-[#111] to-[#050505]">
-                        <h1 className="text-4xl sm:text-6xl font-extrabold tracking-[0.18em] sm:tracking-[0.25em] gold-text mb-2 sm:mb-3 drop-shadow-md break-words">{settings.brandTitle}</h1>
-                        <p className="text-xs sm:text-sm tracking-[0.18em] sm:tracking-[0.3em] text-gray-400 uppercase">{settings.brandSubtitle}</p>
-                        <div className="mt-5 inline-flex flex-col sm:flex-row items-center border border-yellow-600/40 bg-black/50 backdrop-blur px-5 sm:px-8 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm shadow-inner gap-1 sm:gap-0">
-                            <span className="text-white"><i className="fas fa-motorcycle gold-text mr-2"></i>{settings.shippingText}</span>
-                            <span className="hidden sm:inline mx-4 text-gray-700">|</span>
-                            <span className="text-white"><i className="fas fa-mobile-alt gold-text mr-2"></i>Yape ({settings.yapeNumber})</span>
+                <div className="min-h-screen flex flex-col relative pb-24 bg-[#f8f8f8] text-neutral-900">
+                    <header className="py-8 sm:py-12 px-4 sm:px-6 border-b border-neutral-200 text-center bg-white">
+                        <h1 className="text-4xl sm:text-6xl font-black tracking-[0.16em] sm:tracking-[0.22em] text-neutral-950 mb-2 sm:mb-3 break-words">{settings.brandTitle}</h1>
+                        <p className="text-xs sm:text-sm tracking-[0.18em] sm:tracking-[0.25em] text-neutral-600 uppercase">{settings.brandSubtitle}</p>
+                        <div className="mt-5 inline-flex flex-wrap justify-center items-center border border-neutral-300 bg-neutral-50 px-4 sm:px-7 py-2.5 sm:py-3 rounded-2xl sm:rounded-full text-xs sm:text-sm gap-2 sm:gap-0">
+                            <span className="text-neutral-800 font-medium"><i className="fas fa-motorcycle text-neutral-950 mr-2"></i>{settings.shippingText}</span>
+                            <span className="hidden sm:inline mx-4 text-neutral-300">|</span>
+                            <span className="text-neutral-800 font-medium"><i className="fas fa-mobile-alt text-neutral-950 mr-2"></i>Yape ({settings.yapeNumber})</span>
+                            <button
+                                type="button"
+                                onClick={handleCopyYape}
+                                className="sm:ml-3 px-2.5 py-1 rounded-full bg-neutral-950 hover:bg-neutral-800 text-white text-[11px] font-semibold transition"
+                            >
+                                <i className={`fas ${copiedYape ? 'fa-check' : 'fa-copy'} mr-1`}></i>
+                                {copiedYape ? 'Copiado' : 'Copiar'}
+                            </button>
                         </div>
 
                         {/* SECCIÓN DE CONFIANZA */}
                         <div className="mt-6 sm:mt-8 grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 max-w-4xl mx-auto">
-                            <div className="bg-[#101010]/90 border border-yellow-600/30 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 shadow-lg">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-purple-900/40 border border-purple-500/50 flex items-center justify-center text-purple-400 text-lg sm:text-xl flex-shrink-0">
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-neutral-950 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-shield-alt"></i>
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-white font-bold text-xs sm:text-sm">100% Originales</h4>
-                                    <p className="text-gray-400 text-[11px] sm:text-xs">Garantía en perfumes árabes</p>
+                                    <h4 className="text-neutral-950 font-bold text-xs sm:text-sm">100% Originales</h4>
+                                    <p className="text-neutral-600 text-[11px] sm:text-xs">Garantía en perfumes árabes</p>
                                 </div>
                             </div>
-                            <div className="bg-[#101010]/90 border border-yellow-600/30 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 shadow-lg">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-pink-900/40 border border-pink-500/50 flex items-center justify-center text-pink-400 text-lg sm:text-xl flex-shrink-0">
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-neutral-950 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-wallet"></i>
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-white font-bold text-xs sm:text-sm">Yape / Plin Aceptado</h4>
-                                    <p className="text-gray-400 text-[11px] sm:text-xs">Pagos rápidos ({settings.yapeNumber})</p>
+                                    <h4 className="text-neutral-950 font-bold text-xs sm:text-sm">Yape / Plin Aceptado</h4>
+                                    <p className="text-neutral-600 text-[11px] sm:text-xs">Pagos rápidos ({settings.yapeNumber})</p>
                                 </div>
                             </div>
-                            <div className="bg-[#101010]/90 border border-yellow-600/30 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4 shadow-lg">
-                                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-yellow-900/40 border border-yellow-500/50 flex items-center justify-center gold-text text-lg sm:text-xl flex-shrink-0">
+                            <div className="bg-neutral-50 border border-neutral-200 rounded-xl p-3.5 sm:p-4 flex items-center space-x-3 sm:space-x-4">
+                                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-neutral-950 flex items-center justify-center text-white text-base sm:text-lg flex-shrink-0">
                                     <i className="fas fa-motorcycle"></i>
                                 </div>
                                 <div className="text-left">
-                                    <h4 className="text-white font-bold text-xs sm:text-sm">Delivery en Lima</h4>
-                                    <p className="text-gray-400 text-[11px] sm:text-xs">Entregas seguras (S/ {SHIPPING_COST}.00)</p>
+                                    <h4 className="text-neutral-950 font-bold text-xs sm:text-sm">Delivery en Lima</h4>
+                                    <p className="text-neutral-600 text-[11px] sm:text-xs">Entregas seguras (S/ {SHIPPING_COST}.00)</p>
                                 </div>
                             </div>
                         </div>
 
                         {/* BARRA DE BÚSQUEDA */}
                         <div className="mt-6 sm:mt-8 max-w-md mx-auto relative">
-                            <span className="absolute inset-y-0 left-4 flex items-center text-gray-400">
+                            <span className="absolute inset-y-0 left-4 flex items-center text-neutral-500">
                                 <i className="fas fa-search"></i>
                             </span>
                             <input 
@@ -378,227 +450,14 @@
                                 placeholder="Busca tu perfume árabe (ej. Khamrah, Asad...)" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
-                                className="w-full bg-[#111] border border-gray-700 text-white placeholder-gray-500 pl-11 pr-16 py-3 rounded-full focus:outline-none focus:border-yellow-500 transition shadow-lg text-xs sm:text-sm"
+                                className="w-full bg-neutral-50 border border-neutral-300 text-neutral-950 placeholder-neutral-400 pl-11 pr-16 py-3 rounded-full focus:outline-none focus:border-neutral-950 transition text-xs sm:text-sm"
                             />
                             {searchTerm && (
-                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-gray-400 hover:text-white text-[11px] uppercase tracking-widest">
+                                <button onClick={() => setSearchTerm('')} className="absolute inset-y-0 right-4 flex items-center text-neutral-600 hover:text-neutral-950 text-[11px] font-bold uppercase tracking-wider">
                                     Limpiar
                                 </button>
                             )}
                         </div>
 
                         {/* FILTROS POR MARCA */}
-                        <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-2 max-w-2xl mx-auto">
-                            {defaultBrands.map((brand) => (
-                                <button
-                                    key={brand}
-                                    onClick={() => setSelectedBrand(brand)}
-                                    className={`px-4 sm:px-5 py-1.5 sm:py-2 rounded-full text-[11px] sm:text-xs font-bold uppercase tracking-widest transition-all shadow-md ${
-                                        selectedBrand === brand
-                                            ? 'gold-bg border border-yellow-400 scale-105'
-                                            : 'bg-[#111] text-gray-400 border border-gray-800 hover:border-yellow-600 hover:text-white'
-                                    }`}
-                                >
-                                    {brand}
-                                </button>
-                            ))}
-                        </div>
-                    </header>
-
-                    {/* CONTENEDOR PRINCIPAL */}
-                    <div className="flex-grow max-w-[1600px] mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-6 sm:gap-8 p-4 sm:p-6 md:p-10 items-start transition-all">
-                        
-                        <main className={`${isCartOpen ? 'lg:col-span-8' : 'lg:col-span-12'} transition-all duration-300 w-full`}>
-                            {filteredPerfumes.length === 0 ? (
-                                <div className="text-center py-16 text-gray-400">
-                                    <i className="fas fa-wine-bottle text-4xl sm:text-5xl mb-4 gold-text opacity-50"></i>
-                                    <p className="text-lg sm:text-xl">No encontramos perfumes que coincidan con tu búsqueda.</p>
-                                    <button 
-                                        onClick={() => { setSearchTerm(''); setSelectedBrand('Todos'); }} 
-                                        className="mt-4 px-6 py-2 bg-neutral-900 border border-yellow-600/50 text-yellow-400 rounded-full text-xs uppercase tracking-widest font-bold hover:bg-yellow-500 hover:text-black transition"
-                                    >
-                                        Ver todos los perfumes
-                                    </button>
-                                </div>
-                            ) : (
-                                <div className={`grid grid-cols-1 sm:grid-cols-2 ${isCartOpen ? 'xl:grid-cols-2' : 'lg:grid-cols-3'} gap-5 sm:gap-8 transition-all`}>
-                                    {filteredPerfumes.map((p, index) => (
-                                        <article 
-                                            key={p.id} 
-                                            className="perfume-card fade-in-card bg-[#101010] border border-gray-800/80 rounded-2xl overflow-hidden flex flex-col shadow-xl"
-                                            style={{ animationDelay: `${index * 0.06}s` }}
-                                        >
-                                            <div className="h-56 sm:h-64 overflow-hidden relative bg-black m-3 sm:m-4 rounded-xl perfume-img-container">
-                                                <div className="absolute inset-0 bg-gradient-to-t from-[#101010]/80 via-transparent to-transparent opacity-40 z-10"></div>
-                                                <img src={p.img} alt={`${p.name} - Perfume árabe original en Lima`} className="perfume-img w-full h-full object-cover" />
-                                                <span className="absolute top-3 right-3 z-20 bg-black/80 backdrop-blur border border-yellow-600/60 text-yellow-400 text-[10px] px-2.5 py-1 rounded-full uppercase tracking-widest font-bold shadow-md">Stock Árabe</span>
-                                            </div>
-                                            <div className="p-4 sm:p-6 pt-1 sm:pt-2 flex-grow flex flex-col justify-between relative z-20">
-                                                <div>
-                                                    <h2 className="text-lg sm:text-xl font-bold mb-1.5 sm:mb-2 tracking-wide text-white">{p.name}</h2>
-                                                    <p className="perfume-desc text-gray-400 text-xs mb-5 sm:mb-6 leading-relaxed">{p.desc}</p>
-                                                </div>
-                                                <div>
-                                                    <div className="flex items-baseline justify-between mb-3 sm:mb-4">
-                                                        <span className="text-[11px] text-gray-500 uppercase tracking-widest">Precio Final</span>
-                                                        <p className="gold-text text-xl sm:text-2xl font-bold tracking-tight">S/ {p.price}.00</p>
-                                                    </div>
-                                                    <button onClick={() => addToCart(p)} className="w-full gold-bg py-3 sm:py-3.5 rounded-xl uppercase tracking-widest font-bold hover:bg-yellow-500 transition-all shadow-lg text-xs flex items-center justify-center space-x-2">
-                                                        <span>Agregar al Pedido</span>
-                                                        <i className="fas fa-cart-plus text-base"></i>
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </article>
-                                    ))}
-                                </div>
-                            )}
-                        </main>
-
-                        {/* PANEL LATERAL SOLO EN ESCRITORIO (LG+) */}
-                        {isCartOpen && (
-                            <aside className="hidden lg:block lg:col-span-4 w-full sticky top-6 fade-in-card">
-                                {renderCartContent()}
-                            </aside>
-                        )}
-                    </div>
-
-                    {/* MODAL DE RESUMEN PARA TELÉFONO Y TABLET (< LG) */}
-                    {isCartOpen && (
-                        <div className="lg:hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-40 flex items-end sm:items-center justify-center p-3 sm:p-4">
-                            <div className="w-full max-w-md max-h-[90vh] overflow-y-auto">
-                                {renderCartContent()}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* SECCIÓN SEO: PREGUNTAS FRECUENTES */}
-                    <section className="max-w-5xl mx-auto px-4 sm:px-6 py-10 sm:py-12 border-t border-gray-900 mt-10 w-full">
-                        <h2 className="text-2xl sm:text-3xl font-bold gold-text text-center mb-6 sm:mb-8 tracking-wider">Preguntas Frecuentes sobre Perfumes Árabes en Lima</h2>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 text-xs sm:text-sm">
-                            <div className="bg-[#101010] border border-gray-800 p-5 sm:p-6 rounded-xl shadow-md">
-                                <h3 className="text-white font-bold mb-2"><i className="fas fa-check-circle gold-text mr-2"></i>¿Los perfumes árabes son 100% originales?</h3>
-                                <p className="text-gray-400 leading-relaxed">Sí, en ARENAS trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía en Lima.</p>
-                            </div>
-                            <div className="bg-[#101010] border border-gray-800 p-5 sm:p-6 rounded-xl shadow-md">
-                                <h3 className="text-white font-bold mb-2"><i className="fas fa-wallet gold-text mr-2"></i>¿Cómo se realizan los pagos?</h3>
-                                <p className="text-gray-400 leading-relaxed">Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda ({settings.yapeNumber}).</p>
-                            </div>
-                            <div className="bg-[#101010] border border-gray-800 p-5 sm:p-6 rounded-xl shadow-md">
-                                <h3 className="text-white font-bold mb-2"><i className="fas fa-motorcycle gold-text mr-2"></i>¿Cómo funciona el delivery en Lima?</h3>
-                                <p className="text-gray-400 leading-relaxed">Realizamos envíos seguros a todo Lima metropolitana con una tarifa plana de S/ 12.00, coordinando directamente por WhatsApp tras generar tu boleta.</p>
-                            </div>
-                            <div className="bg-[#101010] border border-gray-800 p-5 sm:p-6 rounded-xl shadow-md">
-                                <h3 className="text-white font-bold mb-2"><i className="fas fa-star gold-text mr-2"></i>¿Qué marcas de perfumes árabes recomiendan?</h3>
-                                <p className="text-gray-400 leading-relaxed">Entre los favoritos del público se encuentran Khamrah y Asad de Lattafa, Hawas de Rasasi y 9PM de Afnan, ideales por su gran fijación y proyección.</p>
-                            </div>
-                        </div>
-                    </section>
-
-                    {/* MODAL DE BOLETA DIGITAL */}
-                    {showReceiptModal && (
-                        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
-                            <div className="bg-[#121212] border border-yellow-600/50 rounded-2xl max-w-md w-full p-4 sm:p-6 shadow-2xl relative my-auto max-h-[92vh] overflow-y-auto">
-                                <button 
-                                    onClick={() => setShowReceiptModal(false)}
-                                    className="absolute top-3 right-3 text-gray-400 hover:text-white text-lg p-1"
-                                >
-                                    <i className="fas fa-times"></i>
-                                </button>
-
-                                <h3 className="text-lg sm:text-xl font-bold gold-text text-center mb-3 sm:mb-4 uppercase tracking-widest">Vista Previa de Boleta</h3>
-
-                                <div ref={receiptRef} className="bg-[#181818] border border-yellow-600/30 p-4 sm:p-6 rounded-xl text-white font-mono text-xs mb-4 sm:mb-6 shadow-inner">
-                                    <div className="text-center border-b border-gray-700 pb-3 mb-3">
-                                        <h2 className="text-xl sm:text-2xl font-bold gold-text tracking-widest">{settings.brandTitle}</h2>
-                                        <p className="text-gray-400 text-[10px] uppercase mt-1">Perfumes Árabes Originales - Lima</p>
-                                        <p className="text-gray-400 text-[10px] mt-1">Cliente: {cleanName} | Distrito: {cleanDistrict}</p>
-                                        <p className="text-gray-500 text-[10px] mt-0.5">Fecha: {new Date().toLocaleDateString()} {new Date().toLocaleTimeString()}</p>
-                                    </div>
-
-                                    <div className="space-y-2.5 mb-3">
-                                        {cart.map(item => (
-                                            <div key={item.id} className="flex justify-between border-b border-gray-800 pb-2 gap-2">
-                                                <div className="min-w-0">
-                                                    <p className="font-bold text-white text-xs break-words">{item.name}</p>
-                                                    <p className="text-gray-400 text-[10px]">Cant: {item.qty} x S/ {item.price}.00</p>
-                                                </div>
-                                                <p className="gold-text font-bold flex-shrink-0">S/ {item.price * item.qty}.00</p>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    <div className="space-y-1.5 border-t border-gray-700 pt-2.5 text-[11px] text-gray-300">
-                                        <div className="flex justify-between">
-                                            <span>Subtotal productos:</span>
-                                            <span>S/ {getSubtotal()}.00</span>
-                                        </div>
-                                        <div className="flex justify-between">
-                                            <span>Delivery Lima:</span>
-                                            <span>S/ {SHIPPING_COST}.00</span>
-                                        </div>
-                                    </div>
-
-                                    <div className="border-t border-gray-700 mt-2.5 pt-2.5 flex justify-between items-center text-sm">
-                                        <span className="font-bold uppercase tracking-widest text-gray-300 text-xs">Total a Pagar:</span>
-                                        <span className="gold-text text-lg sm:text-xl font-extrabold">S/ {getTotalPrice()}.00</span>
-                                    </div>
-
-                                    <div className="mt-4 text-center text-[10px] text-gray-500 border-t border-dashed border-gray-800 pt-2.5">
-                                        <p>Yape / Plin: {settings.yapeNumber}</p>
-                                        <p className="mt-1">¡Gracias por tu preferencia en Lima!</p>
-                                    </div>
-                                </div>
-
-                                <div className="space-y-2.5">
-                                    <button 
-                                        onClick={downloadReceiptImage}
-                                        className="w-full gold-bg py-3 rounded-xl font-bold uppercase tracking-widest hover:bg-yellow-500 transition shadow-lg text-xs flex items-center justify-center space-x-2"
-                                    >
-                                        <i className="fas fa-download text-sm"></i>
-                                        <span>{receiptDownloaded ? 'Boleta Descargada (Descargar otra vez)' : '1. Descargar Imagen de Boleta'}</span>
-                                    </button>
-                                    <a 
-                                        href={buildWhatsAppUrl()}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        onClick={() => { setShowReceiptModal(false); setIsCartOpen(false); }}
-                                        className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold uppercase tracking-widest transition shadow-lg text-xs flex items-center justify-center space-x-2"
-                                    >
-                                        <i className="fab fa-whatsapp text-lg"></i>
-                                        <span>2. Enviar Pedido por WhatsApp</span>
-                                    </a>
-                                    <button 
-                                        onClick={() => setShowReceiptModal(false)}
-                                        className="w-full bg-neutral-900 border border-gray-700 text-gray-400 hover:text-white py-2 rounded-xl text-xs uppercase tracking-widest transition"
-                                    >
-                                        Volver al carrito
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* BOTÓN FLOTANTE INFERIOR */}
-                    <div className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 z-30 flex items-center space-x-3">
-                        <button 
-                            onClick={() => setIsCartOpen(!isCartOpen)}
-                            className="bg-green-600 hover:bg-green-500 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-full font-bold shadow-[0_0_25px_rgba(34,197,94,0.6)] flex items-center space-x-2 sm:space-x-3 transition-all hover:scale-105 text-xs sm:text-sm"
-                        >
-                            <i className={`fas ${isCartOpen ? 'fa-columns' : 'fa-shopping-cart'} text-base sm:text-xl`}></i>
-                            <span>{isCartOpen ? 'Ocultar Resumen' : `Ver Pedido (${cart.reduce((sum, item) => sum + item.qty, 0)})`}</span>
-                        </button>
-                    </div>
-
-                    <footer className="py-8 sm:py-10 border-t border-gray-900 text-center text-gray-500 text-xs sm:text-sm bg-black px-4">
-                        <p>&copy; 2026 {settings.brandTitle}. Todos los derechos reservados.</p>
-                        <p className="mt-2 text-xs text-gray-600">Atención personalizada vía WhatsApp: {settings.whatsapp}</p>
-                    </footer>
-                </div>
-            );
-        };
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
-</body>
-</html>
+                        <div className="mt-5 sm:mt-6 flex flex-wrap justify-center gap-2 max-w-2
