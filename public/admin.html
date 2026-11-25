@@ -27,7 +27,10 @@
         const { useState, useEffect, useMemo, useCallback } = React;
 
         /* ---------- Constantes y utilidades ---------- */
-        const SKEYS = ['brandTitle', 'brandSubtitle', 'shippingText', 'whatsapp', 'yapeNumber'];
+        const TEXT_KEYS = [
+            'brandTitle', 'brandSubtitle', 'heroTitle', 'heroSubtitle', 'heroCtaText',
+            'shippingText', 'whatsapp', 'yapeNumber', 'yapeQrImg', 'provinceShippingText'
+        ];
         const RE_YAPE = /^9\d{8}$/;
         const RE_WA = /^51\d{9}$/;
         let keySeq = 0;
@@ -54,7 +57,7 @@
                 throw Object.assign(new Error('Sin conexión con el servidor. Revisa tu internet.'), { status: 0 });
             }
             let data = null;
-            try { data = await res.json(); } catch (e) { /* sin cuerpo JSON */ }
+            try { data = await res.json(); } catch (e) {}
             if (!res.ok) throw Object.assign(new Error((data && data.error) || 'Error del servidor (' + res.status + ')'), { status: res.status });
             return data;
         }
@@ -64,13 +67,30 @@
         function validateSettings(s) {
             const e = {};
             const text = (k, max) => {
-                const v = s[k].trim();
+                const v = String(s[k] || '').trim();
                 if (!v) e[k] = 'Es obligatorio';
                 else if (v.length > max) e[k] = 'Máximo ' + max + ' caracteres';
             };
-            text('brandTitle', 40); text('brandSubtitle', 60); text('shippingText', 80);
-            if (!RE_YAPE.test(s.yapeNumber.trim())) e.yapeNumber = 'Debe tener 9 dígitos y empezar con 9';
-            if (!RE_WA.test(s.whatsapp.trim())) e.whatsapp = 'Debe ser 51 + 9 dígitos (ej. 51912345678)';
+            text('brandTitle', 40);
+            text('brandSubtitle', 60);
+            text('heroTitle', 90);
+            text('heroSubtitle', 180);
+            text('heroCtaText', 30);
+            text('shippingText', 80);
+            text('provinceShippingText', 100);
+
+            if (!RE_YAPE.test(String(s.yapeNumber || '').trim())) e.yapeNumber = 'Debe tener 9 dígitos y empezar con 9';
+            if (!RE_WA.test(String(s.whatsapp || '').trim())) e.whatsapp = 'Debe ser 51 + 9 dígitos (ej. 51912345678)';
+
+            const qr = String(s.yapeQrImg || '').trim();
+            if (qr && (!isHttps(qr) || qr.length > 500)) e.yapeQrImg = 'Debe ser una URL HTTPS válida (máx. 500 caracteres)';
+
+            const limaCost = String(s.limaShippingCost ?? '').trim();
+            if (!/^\d+$/.test(limaCost) || Number(limaCost) > 200) e.limaShippingCost = 'Entero entre 0 y 200';
+
+            const resCost = String(s.reservationPerItem ?? '').trim();
+            if (!/^\d+$/.test(resCost) || Number(resCost) < 1 || Number(resCost) > 500) e.reservationPerItem = 'Entero entre 1 y 500';
+
             return e;
         }
 
@@ -93,7 +113,24 @@
         function hydrate(d) {
             const s = (d && d.settings) || {};
             return {
-                settings: Object.fromEntries(SKEYS.map((k) => [k, String(s[k] ?? '')])),
+                settings: {
+                    brandTitle: String(s.brandTitle ?? 'ARENAS'),
+                    brandSubtitle: String(s.brandSubtitle ?? 'Perfumes Árabes & Decants'),
+                    heroTitle: String(s.heroTitle ?? 'Perfumes árabes originales y decants en Lima'),
+                    heroSubtitle: String(s.heroSubtitle ?? 'Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.'),
+                    heroCtaText: String(s.heroCtaText ?? 'Ver colección'),
+                    shippingText: String(s.shippingText ?? 'Delivery en Lima S/ 12.00'),
+                    whatsapp: String(s.whatsapp ?? ''),
+                    yapeNumber: String(s.yapeNumber ?? ''),
+                    yapeQrImg: String(s.yapeQrImg ?? ''),
+                    limaShippingEnabled: s.limaShippingEnabled !== false,
+                    limaShippingCost: Number.isFinite(Number(s.limaShippingCost)) ? Math.round(Number(s.limaShippingCost)) : 12,
+                    limaPaymentMode: s.limaPaymentMode === 'cod' ? 'cod' : 'prepaid',
+                    provinceShippingEnabled: s.provinceShippingEnabled !== false,
+                    provinceShippingText: String(s.provinceShippingText ?? 'Envío a provincia (pago en destino al recibir)'),
+                    reservationEnabled: s.reservationEnabled !== false,
+                    reservationPerItem: Number.isFinite(Number(s.reservationPerItem)) ? Math.max(1, Math.round(Number(s.reservationPerItem))) : 20,
+                },
                 perfumes: ((d && d.perfumes) || []).map((p) => ({
                     _key: nk(),
                     id: p.id ?? null,
@@ -107,7 +144,24 @@
         }
 
         const strip = (d) => ({
-            settings: Object.fromEntries(SKEYS.map((k) => [k, d.settings[k].trim()])),
+            settings: {
+                brandTitle: d.settings.brandTitle.trim(),
+                brandSubtitle: d.settings.brandSubtitle.trim(),
+                heroTitle: d.settings.heroTitle.trim(),
+                heroSubtitle: d.settings.heroSubtitle.trim(),
+                heroCtaText: d.settings.heroCtaText.trim(),
+                shippingText: d.settings.shippingText.trim(),
+                whatsapp: d.settings.whatsapp.trim(),
+                yapeNumber: d.settings.yapeNumber.trim(),
+                yapeQrImg: d.settings.yapeQrImg.trim(),
+                limaShippingEnabled: Boolean(d.settings.limaShippingEnabled),
+                limaShippingCost: Number(d.settings.limaShippingCost) || 0,
+                limaPaymentMode: d.settings.limaPaymentMode === 'cod' ? 'cod' : 'prepaid',
+                provinceShippingEnabled: Boolean(d.settings.provinceShippingEnabled),
+                provinceShippingText: d.settings.provinceShippingText.trim(),
+                reservationEnabled: Boolean(d.settings.reservationEnabled),
+                reservationPerItem: Number(d.settings.reservationPerItem) || 20,
+            },
             perfumes: d.perfumes.map((p) => ({ id: p.id ?? null, name: p.name.trim(), desc: p.desc.trim(), price: p.price, img: p.img.trim(), active: p.active })),
         });
         const snap = (d) => JSON.stringify(strip(d));
@@ -249,12 +303,11 @@
                             </div>
                         </div>
                         {isHttps(url) && imgBad && <p className="text-xs text-white"><i className="fas fa-triangle-exclamation mr-1.5"></i>No se pudo cargar la imagen con esa URL.</p>}
-                        {/(gstatic|google)\./i.test(url) && <p className="text-xs text-zinc-300"><i className="fas fa-triangle-exclamation mr-1.5"></i>Las imágenes de Google (gstatic) pueden dejar de funcionar sin aviso. Es más seguro usar una imagen alojada en tu propio repo, Imgur o Cloudinary.</p>}
+                        {/(gstatic|google)\./i.test(url) && <p className="text-xs text-zinc-300"><i className="fas fa-triangle-exclamation mr-1.5"></i>Las imágenes de Google (gstatic) pueden dejar de funcionar sin aviso.</p>}
                         <label className="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox" className="w-5 h-5 accent-white" checked={f.active} onChange={(ev) => set('active', ev.target.checked)} />
                             <span className="text-sm text-zinc-200">Visible en la tienda</span>
                         </label>
-                        <p className="text-[11px] text-zinc-500">Los cambios se publican al pulsar «Guardar cambios» en la barra inferior.</p>
                         <div className="flex gap-2 pt-1">
                             <button type="button" onClick={onClose} className={btnGhost + ' flex-1'}>Cancelar</button>
                             <button type="submit" className={btnPrimary + ' flex-1'}>{mode === 'edit' ? 'Aplicar cambios' : 'Agregar perfume'}</button>
@@ -301,32 +354,157 @@
             );
         }
 
-        const FIELDS = [
-            ['brandTitle', 'Título de la tienda', 'Ej. ARENAS', 'Máximo 40 caracteres.'],
-            ['brandSubtitle', 'Subtítulo', 'Ej. Perfumes Árabes & Decants', 'Máximo 60 caracteres.'],
-            ['shippingText', 'Texto y tarifa de envío', 'Ej. Delivery en Lima S/ 12.00', 'Máximo 80 caracteres. Si incluyes un monto (ej. S/ 12.00), la tienda lo usará automáticamente al calcular el total.'],
-            ['whatsapp', 'WhatsApp de contacto', '51XXXXXXXXX', 'Solo números, con código de país: 51 + 9 dígitos.'],
-            ['yapeNumber', 'Número de Yape / Plin', '9XXXXXXXX', '9 dígitos, empieza con 9.'],
-        ];
-
         function SettingsForm({ s, onChange }) {
             const errs = validateSettings(s);
+            const [qrBad, setQrBad] = useState(false);
+            const qrUrl = String(s.yapeQrImg || '').trim();
+            useEffect(() => { setQrBad(false); }, [qrUrl]);
+
             return (
-                <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
-                    <h2 className="text-lg font-extrabold flex items-center gap-2"><i className="fas fa-sliders"></i>Configuración de la tienda</h2>
-                    {FIELDS.map(([k, label, ph, hint]) => (
-                        <Field key={k} label={label} hint={hint} error={errs[k]}>
-                            <input className={inp(errs[k])} value={s[k]} placeholder={ph} inputMode={k === 'whatsapp' || k === 'yapeNumber' ? 'numeric' : 'text'}
-                                onChange={(ev) => onChange(k, k === 'whatsapp' || k === 'yapeNumber' ? ev.target.value.replace(/\D/g, '') : ev.target.value)} />
+                <div className="space-y-4">
+                    {/* Identidad y Portada */}
+                    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-store"></i>Marca y portada principal</h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Nombre de la tienda" error={errs.brandTitle}>
+                                <input className={inp(errs.brandTitle)} value={s.brandTitle} onChange={(e) => onChange('brandTitle', e.target.value)} />
+                            </Field>
+                            <Field label="Subtítulo de marca" error={errs.brandSubtitle}>
+                                <input className={inp(errs.brandSubtitle)} value={s.brandSubtitle} onChange={(e) => onChange('brandSubtitle', e.target.value)} />
+                            </Field>
+                        </div>
+                        <Field label="Título principal (Hero)" error={errs.heroTitle}>
+                            <input className={inp(errs.heroTitle)} value={s.heroTitle} onChange={(e) => onChange('heroTitle', e.target.value)} />
                         </Field>
-                    ))}
-                </section>
+                        <Field label="Descripción de portada" error={errs.heroSubtitle}>
+                            <textarea rows="2" className={inp(errs.heroSubtitle)} value={s.heroSubtitle} onChange={(e) => onChange('heroSubtitle', e.target.value)} />
+                        </Field>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="Texto del botón principal" error={errs.heroCtaText}>
+                                <input className={inp(errs.heroCtaText)} value={s.heroCtaText} onChange={(e) => onChange('heroCtaText', e.target.value)} />
+                            </Field>
+                            <Field label="Texto barra superior" error={errs.shippingText}>
+                                <input className={inp(errs.shippingText)} value={s.shippingText} onChange={(e) => onChange('shippingText', e.target.value)} />
+                            </Field>
+                        </div>
+                    </section>
+
+                    {/* Envíos Lima y Provincia */}
+                    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-truck"></i>Envíos a Lima y Provincia</h2>
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-4">
+                            <label className="flex items-center justify-between gap-3 cursor-pointer">
+                                <div>
+                                    <span className="text-sm font-bold text-white block">Habilitar envíos en Lima</span>
+                                    <span className="text-xs text-zinc-400">Permite pedidos con entrega dentro de Lima Metropolitana.</span>
+                                </div>
+                                <input type="checkbox" className="w-5 h-5 accent-white" checked={Boolean(s.limaShippingEnabled)} onChange={(e) => onChange('limaShippingEnabled', e.target.checked)} />
+                            </label>
+
+                            {s.limaShippingEnabled && (
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-zinc-800">
+                                    <Field label="Costo envío Lima (S/)" error={errs.limaShippingCost}>
+                                        <input
+                                            className={inp(errs.limaShippingCost)}
+                                            inputMode="numeric"
+                                            value={String(s.limaShippingCost)}
+                                            onChange={(e) => onChange('limaShippingCost', e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </Field>
+                                    <Field label="Modalidad de pago del envío en Lima">
+                                        <select
+                                            className={inp(false)}
+                                            value={s.limaPaymentMode}
+                                            onChange={(e) => onChange('limaPaymentMode', e.target.value)}
+                                        >
+                                            <option value="prepaid">Pagar envío en la boleta (adelantado)</option>
+                                            <option value="cod">Pagar envío al recibir en casa (contraentrega)</option>
+                                        </select>
+                                    </Field>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-4">
+                            <label className="flex items-center justify-between gap-3 cursor-pointer">
+                                <div>
+                                    <span className="text-sm font-bold text-white block">Habilitar envíos a Provincia</span>
+                                    <span className="text-xs text-zinc-400">El cliente paga el flete en destino al recoger en agencia (Shalom / Olva).</span>
+                                </div>
+                                <input type="checkbox" className="w-5 h-5 accent-white" checked={Boolean(s.provinceShippingEnabled)} onChange={(e) => onChange('provinceShippingEnabled', e.target.checked)} />
+                            </label>
+
+                            {s.provinceShippingEnabled && (
+                                <div className="pt-2 border-t border-zinc-800">
+                                    <Field label="Mensaje de envío a provincia para el cliente" error={errs.provinceShippingText}>
+                                        <input
+                                            className={inp(errs.provinceShippingText)}
+                                            value={s.provinceShippingText}
+                                            onChange={(e) => onChange('provinceShippingText', e.target.value)}
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+
+                    {/* Pagos, Yape QR y Separación */}
+                    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-qrcode"></i>Pagos, QR de Yape y Separación</h2>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <Field label="WhatsApp de contacto (51 + 9 dígitos)" error={errs.whatsapp}>
+                                <input className={inp(errs.whatsapp)} inputMode="numeric" value={s.whatsapp} onChange={(e) => onChange('whatsapp', e.target.value.replace(/\D/g, ''))} />
+                            </Field>
+                            <Field label="Número de Yape / Plin (9 dígitos)" error={errs.yapeNumber}>
+                                <input className={inp(errs.yapeNumber)} inputMode="numeric" value={s.yapeNumber} onChange={(e) => onChange('yapeNumber', e.target.value.replace(/\D/g, ''))} />
+                            </Field>
+                        </div>
+
+                        <div className="flex gap-3 items-start">
+                            <div className="w-24 h-24 rounded-xl border border-zinc-800 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
+                                {isHttps(qrUrl) && !qrBad
+                                    ? <img src={qrUrl} alt="QR Yape" className="w-full h-full object-contain bg-white p-1" onError={() => setQrBad(true)} />
+                                    : <i className="fas fa-qrcode text-2xl"></i>}
+                            </div>
+                            <div className="flex-grow min-w-0">
+                                <Field label="URL de imagen del QR de Yape (HTTPS, opcional)" error={errs.yapeQrImg} hint="Se mostrará en la boleta para que el cliente escanee y pague directo.">
+                                    <input className={inp(errs.yapeQrImg)} value={s.yapeQrImg} onChange={(e) => onChange('yapeQrImg', e.target.value)} placeholder="https://..." />
+                                </Field>
+                            </div>
+                        </div>
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4 space-y-4">
+                            <label className="flex items-center justify-between gap-3 cursor-pointer">
+                                <div>
+                                    <span className="text-sm font-bold text-white block">Permitir separar pedido con adelanto por perfume</span>
+                                    <span className="text-xs text-zinc-400">Permite al cliente separar cada perfume con un monto fijo y pagar el saldo al recibir.</span>
+                                </div>
+                                <input type="checkbox" className="w-5 h-5 accent-white" checked={Boolean(s.reservationEnabled)} onChange={(e) => onChange('reservationEnabled', e.target.checked)} />
+                            </label>
+
+                            {s.reservationEnabled && (
+                                <div className="pt-2 border-t border-zinc-800 max-w-xs">
+                                    <Field label="Monto de separación por perfume (S/)" error={errs.reservationPerItem}>
+                                        <input
+                                            className={inp(errs.reservationPerItem)}
+                                            inputMode="numeric"
+                                            value={String(s.reservationPerItem)}
+                                            onChange={(e) => onChange('reservationPerItem', e.target.value.replace(/\D/g, ''))}
+                                        />
+                                    </Field>
+                                </div>
+                            )}
+                        </div>
+                    </section>
+                </div>
             );
         }
 
         /* ---------- App ---------- */
         function App() {
-            const [phase, setPhase] = useState('boot'); // boot | login | ready | error
+            const [phase, setPhase] = useState('boot');
             const [enabled, setEnabled] = useState(true);
             const [expired, setExpired] = useState(false);
             const [draft, setDraft] = useState(null);
@@ -375,7 +553,7 @@
             const onLogin = () => { setExpired(false); if (draft) setPhase('ready'); else load(); };
 
             async function doLogout() {
-                try { await api('POST', '/api/admin/logout'); } catch (e) { /* se cierra igual */ }
+                try { await api('POST', '/api/admin/logout'); } catch (e) {}
                 setDraft(null); setSaved(''); setExpired(false); setPhase('login');
             }
             const askLogout = () => dirty
@@ -411,7 +589,6 @@
                 } finally { setSaving(false); }
             }
 
-            /* Operaciones sobre productos (siempre inmutables) */
             const setPerfumes = (fn) => setDraft((d) => ({ ...d, perfumes: fn(d.perfumes) }));
             const setSetting = (k, v) => setDraft((d) => ({ ...d, settings: { ...d.settings, [k]: v } }));
             const toggleActive = (key) => setPerfumes((ps) => ps.map((p) => (p._key === key ? { ...p, active: !p.active } : p)));
