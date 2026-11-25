@@ -22,16 +22,27 @@ const ADMIN_ENABLED = ADMIN_PASSWORD.length >= 10 && SESSION_SECRET.length >= 32
 
 const PUBLIC_DIR = path.join(__dirname, 'public');
 const COOKIE_NAME = 'arenas_session';
-const SESSION_MS = 12 * 60 * 60 * 1000; // 12 horas
-const CACHE_MS = 60 * 1000; // 60 segundos
+const SESSION_MS = 12 * 60 * 60 * 1000;
+const CACHE_MS = 60 * 1000;
 const CDN = ['https://cdn.tailwindcss.com', 'https://unpkg.com', 'https://cdnjs.cloudflare.com'];
 
 const DEFAULT_SETTINGS = {
   brandTitle: 'ARENAS',
   brandSubtitle: 'Perfumes Árabes & Decants',
-  shippingText: 'Delivery en Lima',
+  heroTitle: 'Perfumes árabes originales y decants en Lima',
+  heroSubtitle: 'Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.',
+  heroCtaText: 'Ver colección',
+  shippingText: 'Delivery en Lima S/ 12.00',
   yapeNumber: '',
+  yapeQrImg: '',
   whatsapp: '',
+  limaShippingEnabled: true,
+  limaShippingCost: 12,
+  limaPaymentMode: 'prepaid', // 'prepaid' (paga en boleta) | 'cod' (paga al recibir)
+  provinceShippingEnabled: true,
+  provinceShippingText: 'Envío a provincia (pago en destino al recibir)',
+  reservationEnabled: true,
+  reservationPerItem: 20,
 };
 
 class HttpError extends Error {
@@ -77,12 +88,37 @@ const httpsUrl = z
     }
   }, 'debe ser una URL que empiece con https://');
 
+const optionalHttpsUrl = z
+  .string()
+  .trim()
+  .max(500)
+  .default('')
+  .refine((v) => {
+    if (!v) return true;
+    try {
+      return new URL(v).protocol === 'https:';
+    } catch (e) {
+      return false;
+    }
+  }, 'debe ser una URL que empiece con https://');
+
 const settingsSchema = z.object({
   brandTitle: z.string().trim().min(1).max(40),
   brandSubtitle: z.string().trim().min(1).max(60),
+  heroTitle: z.string().trim().min(1).max(90).default(DEFAULT_SETTINGS.heroTitle),
+  heroSubtitle: z.string().trim().min(1).max(180).default(DEFAULT_SETTINGS.heroSubtitle),
+  heroCtaText: z.string().trim().min(1).max(30).default(DEFAULT_SETTINGS.heroCtaText),
   shippingText: z.string().trim().min(1).max(80),
   yapeNumber: z.string().trim().regex(/^9\d{8}$/, 'debe tener 9 dígitos y empezar con 9'),
+  yapeQrImg: optionalHttpsUrl,
   whatsapp: z.string().trim().regex(/^51\d{9}$/, 'debe ser 51 + 9 dígitos (solo números)'),
+  limaShippingEnabled: z.boolean().default(true),
+  limaShippingCost: z.number().int().min(0).max(200).default(12),
+  limaPaymentMode: z.enum(['prepaid', 'cod']).default('prepaid'),
+  provinceShippingEnabled: z.boolean().default(true),
+  provinceShippingText: z.string().trim().min(1).max(100).default(DEFAULT_SETTINGS.provinceShippingText),
+  reservationEnabled: z.boolean().default(true),
+  reservationPerItem: z.number().int().min(1).max(500).default(20),
 });
 
 const perfumeSchema = z.object({
@@ -101,8 +137,11 @@ const dataSchema = z.object({
 
 const LABELS = {
   settings: 'Configuración', perfumes: 'Perfumes', brandTitle: 'Título', brandSubtitle: 'Subtítulo',
-  shippingText: 'Texto de envío', yapeNumber: 'Yape', whatsapp: 'WhatsApp', name: 'Nombre',
-  desc: 'Descripción', price: 'Precio', img: 'Imagen', active: 'Activo', id: 'ID',
+  heroTitle: 'Título portada', heroSubtitle: 'Subtítulo portada', heroCtaText: 'Botón portada',
+  shippingText: 'Texto de envío', yapeNumber: 'Yape', yapeQrImg: 'QR de Yape', whatsapp: 'WhatsApp',
+  limaShippingCost: 'Costo envío Lima', provinceShippingText: 'Texto provincia',
+  reservationPerItem: 'Monto separación', name: 'Nombre', desc: 'Descripción', price: 'Precio',
+  img: 'Imagen', active: 'Activo', id: 'ID',
 };
 
 function formatZodError(err) {
@@ -118,7 +157,6 @@ function formatZodError(err) {
   return 'Datos inválidos. ' + msgs.join(' | ');
 }
 
-/* Asigna ids a los perfumes nuevos: máximo numérico existente + 1 */
 function withIds(data, rejectDuplicates) {
   const used = new Set();
   let max = 0;
@@ -138,10 +176,12 @@ function withIds(data, rejectDuplicates) {
   return { settings: data.settings, perfumes };
 }
 
-/* Lectura tolerante: si data.json no cumple la validación estricta, se sirve igual
-   (la tienda no debe quedar en blanco) y el panel pedirá corregirlo al guardar. */
 function normalizeStored(raw) {
-  const parsed = dataSchema.safeParse(raw);
+  const mergedRaw = {
+    settings: { ...DEFAULT_SETTINGS, ...((raw && raw.settings) || {}) },
+    perfumes: Array.isArray(raw && raw.perfumes) ? raw.perfumes : [],
+  };
+  const parsed = dataSchema.safeParse(mergedRaw);
   if (parsed.success) return withIds(parsed.data, false);
   if (!raw || typeof raw !== 'object' || !Array.isArray(raw.perfumes)) {
     throw new HttpError(502, 'El data.json tiene un formato inválido.');
@@ -149,7 +189,7 @@ function normalizeStored(raw) {
   console.warn('data.json no cumple la validación estricta:', formatZodError(parsed.error));
   return withIds(
     {
-      settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
+      settings: mergedRaw.settings,
       perfumes: raw.perfumes
         .filter((p) => p && typeof p === 'object')
         .map((p) => ({
@@ -249,7 +289,6 @@ function getData(force) {
   return inflight;
 }
 
-/* Para la tienda: si GitHub falla, usa la última copia buena o el data.json del despliegue */
 async function getPublicData() {
   if (!GITHUB_TOKEN) {
     if (!cache.data) {
@@ -271,7 +310,7 @@ async function getPublicData() {
         throw err;
       }
     }
-    cache.ts = Date.now() - CACHE_MS + 10000; // reintenta GitHub en 10 s
+    cache.ts = Date.now() - CACHE_MS + 10000;
     return cache.data;
   }
 }
@@ -327,7 +366,7 @@ function requireAdmin(req, res, next) {
 const app = express();
 const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
-app.set('trust proxy', 1); // Render está detrás de un proxy
+app.set('trust proxy', 1);
 
 app.use(
   helmet({
@@ -354,14 +393,12 @@ app.use(express.json({ limit: '100kb' }));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
-// El panel y su API nunca se indexan ni se cachean
 app.use(['/admin', '/api/admin'], (req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.set('Cache-Control', 'no-store');
   next();
 });
 
-// El panel solo se sirve en /admin; /admin.html no es accesible directo
 app.use((req, res, next) => {
   let p;
   try {
@@ -416,7 +453,7 @@ function originGuard(req, res, next) {
 
 app.use('/api', apiLimiter, originGuard);
 
-/* ---------- API pública (la usa index.html, formato sin cambios) ---------- */
+/* ---------- API pública ---------- */
 app.get(
   '/api/data',
   ah(async (req, res) => {
@@ -454,7 +491,7 @@ app.get(
   '/api/admin/data',
   requireAdmin,
   ah(async (req, res) => {
-    res.json(await getData(true)); // siempre fresco desde GitHub, incluye perfumes ocultos
+    res.json(await getData(true));
   })
 );
 
@@ -466,7 +503,7 @@ app.put(
     if (!parsed.success) throw new HttpError(400, formatZodError(parsed.error));
     const data = withIds(parsed.data, true);
     await ghWrite(data);
-    cache = { data, ts: Date.now() }; // invalida la caché con los datos recién guardados
+    cache = { data, ts: Date.now() };
     res.json({ ok: true, data });
   })
 );
