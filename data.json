@@ -8,14 +8,6 @@
   },
   "perfumes": [
     {
-      "id": 7,
-      "name": "Khamrah - Lattafa (copia)",
-      "desc": "Dulce, cálido y especiado.",
-      "price": 135,
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcGDdRbVD6WnSNszIOMPxBENvUvQAmgi4svPPU_TjrwQ&s=10",
-      "active": true
-    },
-    {
       "id": 1,
       "name": "Khamrah - Lattafa",
       "desc": "Dulce, cálido y especiado.",
