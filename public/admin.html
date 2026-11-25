@@ -24,13 +24,9 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useMemo, useCallback } = React;
+        const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
         /* ---------- Constantes y utilidades ---------- */
-        const TEXT_KEYS = [
-            'brandTitle', 'brandSubtitle', 'heroTitle', 'heroSubtitle', 'heroCtaText',
-            'shippingText', 'whatsapp', 'yapeNumber', 'yapeQrImg', 'provinceShippingText'
-        ];
         const RE_YAPE = /^9\d{8}$/;
         const RE_WA = /^51\d{9}$/;
         let keySeq = 0;
@@ -64,6 +60,48 @@
 
         function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
 
+        /* Redimensiona y optimiza la imagen del QR a PNG/JPEG ligero (< 120 KB) */
+        function compressQrImage(file) {
+            return new Promise((resolve, reject) => {
+                if (!file || !file.type.startsWith('image/')) {
+                    return reject(new Error('Selecciona un archivo de imagen válido (PNG, JPG o WEBP).'));
+                }
+                const reader = new FileReader();
+                reader.onerror = () => reject(new Error('No se pudo leer el archivo seleccionado.'));
+                reader.onload = () => {
+                    const img = new Image();
+                    img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
+                    img.onload = () => {
+                        const maxSide = 440;
+                        const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                        const w = Math.max(1, Math.round(img.width * scale));
+                        const h = Math.max(1, Math.round(img.height * scale));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const ctx = canvas.getContext('2d');
+                        ctx.fillStyle = '#ffffff';
+                        ctx.fillRect(0, 0, w, h);
+                        ctx.drawImage(img, 0, 0, w, h);
+
+                        let dataUrl = canvas.toDataURL('image/webp', 0.88);
+                        if (!dataUrl.startsWith('data:image/webp')) {
+                            dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                        }
+                        if (dataUrl.length > 240000) {
+                            dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+                        }
+                        if (dataUrl.length > 240000) {
+                            return reject(new Error('La imagen del QR sigue siendo muy pesada. Recórtala un poco más.'));
+                        }
+                        resolve(dataUrl);
+                    };
+                    img.src = reader.result;
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
         function validateSettings(s) {
             const e = {};
             const text = (k, max) => {
@@ -83,7 +121,9 @@
             if (!RE_WA.test(String(s.whatsapp || '').trim())) e.whatsapp = 'Debe ser 51 + 9 dígitos (ej. 51912345678)';
 
             const qr = String(s.yapeQrImg || '').trim();
-            if (qr && (!isHttps(qr) || qr.length > 500)) e.yapeQrImg = 'Debe ser una URL HTTPS válida (máx. 500 caracteres)';
+            if (qr && !qr.startsWith('data:image/') && (!isHttps(qr) || qr.length > 500)) {
+                e.yapeQrImg = 'Imagen QR inválida';
+            }
 
             const limaCost = String(s.limaShippingCost ?? '').trim();
             if (!/^\d+$/.test(limaCost) || Number(limaCost) > 200) e.limaShippingCost = 'Entero entre 0 y 200';
@@ -354,11 +394,29 @@
             );
         }
 
-        function SettingsForm({ s, onChange }) {
+        function SettingsForm({ s, onChange, onToast }) {
             const errs = validateSettings(s);
             const [qrBad, setQrBad] = useState(false);
-            const qrUrl = String(s.yapeQrImg || '').trim();
-            useEffect(() => { setQrBad(false); }, [qrUrl]);
+            const [qrBusy, setQrBusy] = useState(false);
+            const qrFileRef = useRef(null);
+            const qrVal = String(s.yapeQrImg || '').trim();
+            useEffect(() => { setQrBad(false); }, [qrVal]);
+
+            const handleQrUpload = async (ev) => {
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                setQrBusy(true);
+                try {
+                    const dataUrl = await compressQrImage(file);
+                    onChange('yapeQrImg', dataUrl);
+                    onToast('Imagen QR cargada. Pulsa «Guardar cambios» para publicarla.');
+                } catch (err) {
+                    onToast(err.message, 'err');
+                } finally {
+                    setQrBusy(false);
+                    ev.target.value = '';
+                }
+            };
 
             return (
                 <div className="space-y-4">
@@ -449,7 +507,7 @@
                         </div>
                     </section>
 
-                    {/* Pagos, Yape QR y Separación */}
+                    {/* Pagos, QR de Yape (por imagen) y Separación */}
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
                         <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-qrcode"></i>Pagos, QR de Yape y Separación</h2>
 
@@ -462,16 +520,47 @@
                             </Field>
                         </div>
 
-                        <div className="flex gap-3 items-start">
-                            <div className="w-24 h-24 rounded-xl border border-zinc-800 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
-                                {isHttps(qrUrl) && !qrBad
-                                    ? <img src={qrUrl} alt="QR Yape" className="w-full h-full object-contain bg-white p-1" onError={() => setQrBad(true)} />
-                                    : <i className="fas fa-qrcode text-2xl"></i>}
-                            </div>
-                            <div className="flex-grow min-w-0">
-                                <Field label="URL de imagen del QR de Yape (HTTPS, opcional)" error={errs.yapeQrImg} hint="Se mostrará en la boleta para que el cliente escanee y pague directo.">
-                                    <input className={inp(errs.yapeQrImg)} value={s.yapeQrImg} onChange={(e) => onChange('yapeQrImg', e.target.value)} placeholder="https://..." />
-                                </Field>
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                            <span className="block text-xs text-zinc-300 font-bold mb-2">Imagen del QR de Yape / Plin</span>
+                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                <div className="w-28 h-28 rounded-xl border border-zinc-800 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
+                                    {qrVal && !qrBad
+                                        ? <img src={qrVal} alt="QR Yape" className="w-full h-full object-contain bg-white p-1.5" onError={() => setQrBad(true)} />
+                                        : <i className="fas fa-qrcode text-3xl"></i>}
+                                </div>
+                                <div className="space-y-2.5 flex-grow">
+                                    <p className="text-xs text-zinc-400 leading-relaxed">
+                                        Sube una captura o foto de tu código QR de Yape desde tu galería. Se optimiza automáticamente y aparecerá en la boleta del cliente.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <input
+                                            ref={qrFileRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleQrUpload}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={qrBusy}
+                                            onClick={() => qrFileRef.current && qrFileRef.current.click()}
+                                            className={btnPrimary + ' !py-2.5'}
+                                        >
+                                            <i className={'fas ' + (qrBusy ? 'fa-spinner fa-spin' : 'fa-upload')}></i>
+                                            {qrVal ? 'Cambiar imagen QR' : 'Subir imagen QR'}
+                                        </button>
+                                        {qrVal && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onChange('yapeQrImg', '')}
+                                                className={btnGhost + ' !py-2.5'}
+                                            >
+                                                <i className="fas fa-trash-can"></i>Quitar QR
+                                            </button>
+                                        )}
+                                    </div>
+                                    {errs.yapeQrImg && <p className="text-xs text-white font-semibold">{errs.yapeQrImg}</p>}
+                                </div>
                             </div>
                         </div>
 
@@ -675,7 +764,7 @@
                             <button type="button" className={tabCls(tab === 'config')} onClick={() => setTab('config')}><i className="fas fa-sliders"></i>Configuración</button>
                         </div>
 
-                        {tab === 'config' ? <SettingsForm s={draft.settings} onChange={setSetting} /> : (
+                        {tab === 'config' ? <SettingsForm s={draft.settings} onChange={setSetting} onToast={toast} /> : (
                             <>
                                 <div className="flex gap-2">
                                     <div className="relative flex-grow">
