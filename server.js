@@ -38,7 +38,7 @@ const DEFAULT_SETTINGS = {
   whatsapp: '',
   limaShippingEnabled: true,
   limaShippingCost: 12,
-  limaPaymentMode: 'prepaid', // 'prepaid' (paga en boleta) | 'cod' (paga al recibir)
+  limaPaymentMode: 'prepaid',
   provinceShippingEnabled: true,
   provinceShippingText: 'Envío a provincia (pago en destino al recibir)',
   reservationEnabled: true,
@@ -88,19 +88,20 @@ const httpsUrl = z
     }
   }, 'debe ser una URL que empiece con https://');
 
-const optionalHttpsUrl = z
+const qrImageField = z
   .string()
   .trim()
-  .max(500)
+  .max(250000)
   .default('')
   .refine((v) => {
     if (!v) return true;
+    if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) return true;
     try {
-      return new URL(v).protocol === 'https:';
+      return v.length <= 500 && new URL(v).protocol === 'https:';
     } catch (e) {
       return false;
     }
-  }, 'debe ser una URL que empiece con https://');
+  }, 'debe ser una imagen válida o una URL https://');
 
 const settingsSchema = z.object({
   brandTitle: z.string().trim().min(1).max(40),
@@ -110,7 +111,7 @@ const settingsSchema = z.object({
   heroCtaText: z.string().trim().min(1).max(30).default(DEFAULT_SETTINGS.heroCtaText),
   shippingText: z.string().trim().min(1).max(80),
   yapeNumber: z.string().trim().regex(/^9\d{8}$/, 'debe tener 9 dígitos y empezar con 9'),
-  yapeQrImg: optionalHttpsUrl,
+  yapeQrImg: qrImageField,
   whatsapp: z.string().trim().regex(/^51\d{9}$/, 'debe ser 51 + 9 dígitos (solo números)'),
   limaShippingEnabled: z.boolean().default(true),
   limaShippingCost: z.number().int().min(0).max(200).default(12),
@@ -138,7 +139,7 @@ const dataSchema = z.object({
 const LABELS = {
   settings: 'Configuración', perfumes: 'Perfumes', brandTitle: 'Título', brandSubtitle: 'Subtítulo',
   heroTitle: 'Título portada', heroSubtitle: 'Subtítulo portada', heroCtaText: 'Botón portada',
-  shippingText: 'Texto de envío', yapeNumber: 'Yape', yapeQrImg: 'QR de Yape', whatsapp: 'WhatsApp',
+  shippingText: 'Texto de envío', yapeNumber: 'Yape', yapeQrImg: 'Imagen QR de Yape', whatsapp: 'WhatsApp',
   limaShippingCost: 'Costo envío Lima', provinceShippingText: 'Texto provincia',
   reservationPerItem: 'Monto separación', name: 'Nombre', desc: 'Descripción', price: 'Precio',
   img: 'Imagen', active: 'Activo', id: 'ID',
@@ -389,7 +390,7 @@ app.use(
   })
 );
 app.use(compression());
-app.use(express.json({ limit: '100kb' }));
+app.use(express.json({ limit: '500kb' }));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
@@ -524,7 +525,7 @@ app.use((err, req, res, next) => {
     message = 'El cuerpo de la petición no es un JSON válido.';
   } else if (err.type === 'entity.too.large') {
     status = 413;
-    message = 'La petición es demasiado grande (máximo 100 kb).';
+    message = 'La petición es demasiado grande (máximo 500 kb).';
   } else {
     console.error('Error no controlado:', err.message);
   }
