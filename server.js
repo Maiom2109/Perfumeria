@@ -52,6 +52,22 @@ class HttpError extends Error {
   }
 }
 
+/* ===================== Almacén temporal de comprobantes ===================== */
+const PROOFS = new Map(); // id -> { buf, type, exp }
+const PROOF_TTL_MS = 48 * 60 * 60 * 1000; // 48 horas
+const MAX_PROOFS = 300;
+
+function cleanupProofs() {
+  const now = Date.now();
+  for (const [k, v] of PROOFS.entries()) {
+    if (v.exp <= now) PROOFS.delete(k);
+  }
+  while (PROOFS.size > MAX_PROOFS) {
+    const oldest = PROOFS.keys().next().value;
+    PROOFS.delete(oldest);
+  }
+}
+
 /* ===================== Validación (zod) ===================== */
 z.setErrorMap((issue, ctx) => {
   switch (issue.code) {
@@ -134,6 +150,14 @@ const perfumeSchema = z.object({
 const dataSchema = z.object({
   settings: settingsSchema,
   perfumes: z.array(perfumeSchema).max(200),
+});
+
+const proofUploadSchema = z.object({
+  image: z
+    .string()
+    .trim()
+    .max(450000)
+    .regex(/^data:image\/(jpeg|jpg|png|webp);base64,[A-Za-z0-9+/=]+$/, 'Formato de imagen no válido'),
 });
 
 const LABELS = {
@@ -394,6 +418,19 @@ app.use(express.json({ limit: '500kb' }));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
+/* ---------- Vista pública del comprobante subido ---------- */
+app.get('/comprobante/:id', (req, res) => {
+  const id = String(req.params.id || '').replace(/\.(jpg|jpeg|png|webp)$/i, '');
+  const item = PROOFS.get(id);
+  if (!item || item.exp <= Date.now()) {
+    PROOFS.delete(id);
+    return res.status(404).type('text').send('Comprobante no encontrado o expirado.');
+  }
+  res.set('Content-Type', item.type);
+  res.set('Cache-Control', 'public, max-age=3600');
+  res.send(item.buf);
+});
+
 app.use(['/admin', '/api/admin'], (req, res, next) => {
   res.set('X-Robots-Tag', 'noindex, nofollow');
   res.set('Cache-Control', 'no-store');
@@ -422,6 +459,14 @@ const apiLimiter = rateLimit({
   standardHeaders: 'draft-7',
   legacyHeaders: false,
   message: { error: 'Demasiadas peticiones. Espera un momento e intenta de nuevo.' },
+});
+
+const proofLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 15,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiados comprobantes enviados. Espera unos minutos.' },
 });
 
 const loginLimiter = rateLimit({
@@ -463,6 +508,32 @@ app.get(
       settings,
       perfumes: perfumes.filter((p) => p.active !== false).map(({ active, ...rest }) => rest),
     });
+  })
+);
+
+/* Subida de captura de pago del cliente */
+app.post(
+  '/api/proof',
+  proofLimiter,
+  ah(async (req, res) => {
+    const parsed = proofUploadSchema.safeParse(req.body);
+    if (!parsed.success) throw new HttpError(400, 'La imagen del comprobante no es válida.');
+    const match = parsed.data.image.match(/^data:(image\/(?:jpeg|jpg|png|webp));base64,(.+)$/);
+    if (!match) throw new HttpError(400, 'Formato de imagen no soportado.');
+
+    const mime = match[1] === 'image/jpg' ? 'image/jpeg' : match[1];
+    const ext = mime === 'image/png' ? 'png' : mime === 'image/webp' ? 'webp' : 'jpg';
+    const buf = Buffer.from(match[2], 'base64');
+    if (buf.length > 350 * 1024) throw new HttpError(413, 'La captura es demasiado pesada.');
+
+    cleanupProofs();
+    const id = crypto.randomBytes(10).toString('hex');
+    PROOFS.set(id, { buf, type: mime, exp: Date.now() + PROOF_TTL_MS });
+
+    const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
+    const host = req.get('host');
+    const url = `${proto}://${host}/comprobante/${id}.${ext}`;
+    res.json({ ok: true, url });
   })
 );
 
