@@ -2,9 +2,20 @@
   "settings": {
     "brandTitle": "ARENAS",
     "brandSubtitle": "PERFUMERÍA ARABE",
+    "heroTitle": "Perfumes árabes originales y decants en Lima",
+    "heroSubtitle": "Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.",
+    "heroCtaText": "Ver colección",
     "shippingText": "Envíos a todo Lima",
     "yapeNumber": "940637153",
-    "whatsapp": "51940637153"
+    "yapeQrImg": "",
+    "whatsapp": "51940637153",
+    "limaShippingEnabled": true,
+    "limaShippingCost": 12,
+    "limaPaymentMode": "cod",
+    "provinceShippingEnabled": true,
+    "provinceShippingText": "Envío a provincia (pago en destino al recibir)",
+    "reservationEnabled": true,
+    "reservationPerItem": 20
   },
   "perfumes": [
     {
