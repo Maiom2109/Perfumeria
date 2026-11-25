@@ -2,52 +2,66 @@
   "settings": {
     "brandTitle": "ARENAS",
     "brandSubtitle": "PERFUMERÍA ARABE",
-    "whatsapp": "51940637153",
+    "shippingText": "Envíos a todo Lima",
     "yapeNumber": "940637153",
-    "shippingText": "Envíos a todo Lima"
+    "whatsapp": "51940637153"
   },
   "perfumes": [
     {
+      "id": 7,
+      "name": "Khamrah - Lattafa (copia)",
+      "desc": "Dulce, cálido y especiado.",
+      "price": 135,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcGDdRbVD6WnSNszIOMPxBENvUvQAmgi4svPPU_TjrwQ&s=10",
+      "active": true
+    },
+    {
       "id": 1,
       "name": "Khamrah - Lattafa",
-      "price": 135,
       "desc": "Dulce, cálido y especiado.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcGDdRbVD6WnSNszIOMPxBENvUvQAmgi4svPPU_TjrwQ&s=10"
+      "price": 135,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRcGDdRbVD6WnSNszIOMPxBENvUvQAmgi4svPPU_TjrwQ&s=10",
+      "active": true
     },
     {
       "id": 2,
       "name": "Khamrah Qahwah - Lattafa",
-      "price": 135,
       "desc": "El adictivo aroma a café árabe.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBcgv75kVoIzQz2szBAT5PJrNEFP5bwXGZYpHO5B-F7Q&s=10"
+      "price": 135,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRBcgv75kVoIzQz2szBAT5PJrNEFP5bwXGZYpHO5B-F7Q&s=10",
+      "active": true
     },
     {
       "id": 3,
       "name": "Asad Bourbon - Lattafa",
-      "price": 129,
       "desc": "Vainilla oscura y carácter.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-AZkYtXwEdSYqKaZQq2LB4FLpwhRDjXfQGRy_fdu81w&s=10"
+      "price": 129,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT-AZkYtXwEdSYqKaZQq2LB4FLpwhRDjXfQGRy_fdu81w&s=10",
+      "active": true
     },
     {
       "id": 4,
       "name": "9PM - Afnan",
-      "price": 129,
       "desc": "Perfecto para la noche.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRFZWkaKX4zI9enfxtOuIZTgONTEzwf3MCQNWe23t2Ng&s=10"
+      "price": 129,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRFZWkaKX4zI9enfxtOuIZTgONTEzwf3MCQNWe23t2Ng&s=10",
+      "active": true
     },
     {
       "id": 5,
       "name": "Odyssey Mandarin Sky - Armaf",
-      "price": 129,
       "desc": "Cítrico, fresco y envolvente.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvw0IHuV-qI7G6Fm2ocw6czffNssFKuGlh1JOLlhJL4Q&s=10"
+      "price": 129,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSvw0IHuV-qI7G6Fm2ocw6czffNssFKuGlh1JOLlhJL4Q&s=10",
+      "active": true
     },
     {
       "id": 6,
       "name": "Hawas Ice - Rasasi",
-      "price": 149,
       "desc": "Frescura extrema y duradera.",
-      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTag-zpvAIMQm3Hxw6PllG_5dq8PexR7HMqcIjLQTFKXw&s=10"
+      "price": 149,
+      "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTag-zpvAIMQm3Hxw6PllG_5dq8PexR7HMqcIjLQTFKXw&s=10",
+      "active": true
     }
   ]
 }
