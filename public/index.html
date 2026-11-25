@@ -71,7 +71,7 @@ img{display:block;max-width:100%}
 @keyframes bump{40%{transform:scale(1.08)}}
 @keyframes pulse{50%{opacity:.55}}
 
-/* Barra, cabecera, hero compacto sin hueco negro */
+/* Barra, cabecera, hero */
 .bar{font-size:12px;color:var(--mu);text-align:center;padding:8px 16px;border-bottom:1px solid var(--ln);background:#000}
 .bar button{margin-left:8px;color:var(--tx);border-bottom:1px solid currentColor}
 header.top{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:12px clamp(16px,4vw,40px);border-bottom:1px solid var(--ln);background:rgba(9,9,11,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
@@ -187,7 +187,7 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 
 .md{position:fixed;inset:0;z-index:80;display:grid;place-items:center;padding:16px;background:rgba(0,0,0,.85);overflow-y:auto;opacity:0;visibility:hidden;transition:opacity .35s,visibility 0s .35s}
 .md.on{opacity:1;visibility:visible;transition-delay:0s}
-.mb{position:relative;width:100%;max-width:460px;background:var(--s1);border:1px solid var(--ln);border-radius:10px;padding:22px;transform:translateY(14px) scale(.985);transition:transform .5s var(--ease);my-auto}
+.mb{position:relative;width:100%;max-width:460px;background:var(--s1);border:1px solid var(--ln);border-radius:10px;padding:22px;transform:translateY(14px) scale(.985);transition:transform .5s var(--ease);margin:auto 0}
 .md.on .mb{transform:none}
 .cl{position:absolute;top:12px;right:12px;z-index:3;background:rgba(9,9,11,.8)}
 .mb>h2{font:600 25px var(--serif);text-align:center}
@@ -226,7 +226,7 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 .rf{margin-top:12px;padding-top:10px;border-top:1px dashed var(--ln);text-align:center;color:#a1a1aa;font-size:11px}
 
 .yape-box{border:1px solid var(--ln);border-radius:8px;padding:12px;margin-bottom:12px;background:#0c0c0e;text-align:center}
-.yape-box img{width:150px;height:150px;object-fit:contain;margin:0 auto 10px;background:#fff;padding:6px;border-radius:6px}
+.yape-box img{width:165px;height:165px;object-fit:contain;margin:0 auto 10px;background:#fff;padding:6px;border-radius:8px}
 .yape-num-row{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;font-weight:600}
 .yape-copy{padding:4px 10px;border:1px solid var(--ln);border-radius:99px;font-size:11px}
 .yape-copy:hover{border-color:#fff}
@@ -235,7 +235,8 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 .proof-lbl{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;border:1px solid var(--ln);border-radius:99px;font-size:12px;cursor:pointer;transition:border-color .2s}
 .proof-lbl:hover{border-color:#fff}
 .proof-prev{margin-top:10px;display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left;font-size:11px;color:var(--mu);background:var(--s1);padding:8px;border-radius:6px}
-.proof-prev img{width:42px;height:42px;object-fit:cover;border-radius:4px;flex:none}
+.proof-prev img{width:46px;height:46px;object-fit:cover;border-radius:4px;flex:none}
+.proof-tip{margin-top:8px;font-size:11px;color:#d4d4d8;line-height:1.4}
 
 .ghost{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:9px;padding:12px;border:1px solid var(--ln);border-radius:99px;font-size:13px;text-decoration:none;transition:border-color .2s}
 .ghost:hover{border-color:#fff}
@@ -389,20 +390,23 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 
     <div class="proof-box">
       <input type="file" id="proof-input" accept="image/*" hidden>
-      <label for="proof-input" class="proof-lbl">
+      <label for="proof-input" class="proof-lbl" id="proof-lbl">
         <i data-i="dl"></i>
-        <span>Adjuntar captura de pago Yape</span>
+        <span id="proof-btn-txt">Adjuntar captura de pago Yape</span>
       </label>
-      <div class="proof-prev" id="proof-prev" hidden>
-        <img id="proof-img" alt="Captura adjunta">
-        <span id="proof-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
-        <button type="button" class="rm" data-a="rmproof">Quitar</button>
+      <div id="proof-wrap" hidden>
+        <div class="proof-prev">
+          <img id="proof-img" alt="Captura adjunta">
+          <span id="proof-name" style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+          <button type="button" class="rm" data-a="rmproof">Quitar</button>
+        </div>
+        <p class="proof-tip" id="proof-status">Captura cargada. Se enviará junto con tu pedido por WhatsApp.</p>
       </div>
     </div>
 
-    <button class="cta w" id="rdl" data-a="dl">1. Descargar imagen de boleta</button>
+    <button class="ghost w" id="rdl" data-a="dl">1. Descargar imagen de boleta</button>
+    <button class="cta w" style="margin-top:9px" id="rwa" data-a="wa"><i data-i="wa"></i>2. Enviar pedido y captura por WhatsApp</button>
     <button class="ghost w" id="rcp" data-a="cs"><i data-i="copy"></i>Copiar resumen en texto</button>
-    <a class="ghost w" id="rwa" data-a="wa" href="#" target="_blank" rel="noopener noreferrer"><i data-i="wa"></i>2. Enviar pedido y captura por WhatsApp</a>
     <button class="link" data-a="back">Volver al pedido</button>
   </div>
 </div>
@@ -424,7 +428,8 @@ var ic = function (n) { return '<svg class="ic" aria-hidden="true"><use href="#i
 
 var S = {
   data: null, err: false, q: '', brand: 'Todos', cart: [],
-  name: '', dist: '', zone: 'lima', payMode: 'full', proofFile: null, proofUrl: ''
+  name: '', dist: '', zone: 'lima', payMode: 'full',
+  proofName: '', proofLocalUrl: '', proofRemoteUrl: '', uploadingProof: false
 };
 var settings = {
   brandTitle: 'ARENAS',
@@ -699,7 +704,7 @@ function toast(msg, act) {
   var el = $('#tt');
   $('span', el).textContent = msg; $('button', el).hidden = act === false;
   el.classList.add('on'); clearTimeout(tt);
-  tt = setTimeout(function () { el.classList.remove('on'); }, 3000);
+  tt = setTimeout(function () { el.classList.remove('on'); }, 3500);
 }
 
 /* ---------- Ventanas ---------- */
@@ -743,31 +748,35 @@ zi.addEventListener('mousemove', function (e) { if (zi.classList.contains('z')) 
 zi.addEventListener('mouseleave', function () { zi.classList.remove('z'); });
 zi.addEventListener('click', function (e) { if (matchMedia('(hover:none)').matches) { zpos(e); zi.classList.toggle('z'); } });
 
-/* ---------- Boleta, Separación y WhatsApp ---------- */
+/* ---------- Boleta, Subida de Captura y WhatsApp ---------- */
 var cname = function () { return (S.name || '').trim() || 'Cliente Web'; };
 var cdist = function () { return (S.dist || '').trim() || (S.zone === 'provincia' ? 'Provincia (por coordinar)' : 'Lima (por coordinar)'); };
 
-function plainText() {
-  var br = getPaymentBreakdown();
-  var lines = S.cart.map(function (i) { return '• ' + i.qty + 'x ' + i.name + ' - ' + money(i.price * i.qty); }).join('\n');
-  var arr = [
-    'NOTA DE PEDIDO - ' + settings.brandTitle,
-    'Cliente: ' + cname(),
-    'Destino (' + (S.zone === 'provincia' ? 'Provincia' : 'Lima') + '): ' + cdist(),
-    'Modalidad: ' + (br.isReserve ? 'SEPARACIÓN (' + money(br.perItem) + ' por perfume)' : 'PAGO COMPLETO'),
-    'Productos:',
-    lines,
-    'Subtotal: ' + money(br.subtotal),
-    br.ship.label + ': ' + br.ship.text,
-    'Total pedido: ' + money(br.orderTotal),
-    'MONTO A YAPEAR AHORA: ' + money(br.payNow)
-  ];
-  if (br.isReserve) arr.push('Saldo pendiente al recibir: ' + money(br.balance));
-  if (S.proofFile) arr.push('Comprobante adjunto: ' + S.proofFile.name);
-  return arr.join('\n');
+function compressProofToDataUrl(file) {
+  return new Promise(function (resolve, reject) {
+    var img = new Image();
+    var u = URL.createObjectURL(file);
+    img.onload = function () {
+      var max = 1080;
+      var scale = Math.min(1, max / Math.max(img.width, img.height));
+      var c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(u);
+      var dataUrl = c.toDataURL('image/jpeg', 0.84);
+      if (dataUrl.length > 430000) dataUrl = c.toDataURL('image/jpeg', 0.68);
+      resolve(dataUrl);
+    };
+    img.onerror = function () {
+      URL.revokeObjectURL(u);
+      reject(new Error('No se pudo leer la imagen.'));
+    };
+    img.src = u;
+  });
 }
 
-function waUrl() {
+function buildWhatsAppMessage() {
   var br = getPaymentBreakdown();
   var lines = S.cart.map(function (i) { return '▪️ ' + i.qty + 'x ' + i.name + ' - ' + money(i.price * i.qty); }).join('\n');
   var msg = [
@@ -789,10 +798,30 @@ function waUrl() {
     msg.push('⏳ *Saldo pendiente:* ' + money(br.balance));
   }
   msg.push('----------------------------------------');
-  msg.push(S.proofFile
-    ? '📸 Ya realicé el Yape (' + S.proofFile.name + '), aquí te envío mi captura de pago y boleta.'
-    : '✨ Adjunto mi boleta y captura de pago Yape. ¿Me confirman el despacho?');
-  return 'https://wa.me/' + settings.whatsapp + '?text=' + encodeURIComponent(msg.join('\n'));
+  if (S.proofRemoteUrl) {
+    msg.push('📸 *Captura de pago Yape:*');
+    msg.push(S.proofRemoteUrl);
+  } else {
+    msg.push('📸 Adjunto mi captura de pago Yape. ¿Me confirman el despacho?');
+  }
+  return msg.join('\n');
+}
+
+function plainText() {
+  return buildWhatsAppMessage().replace(/\*/g, '');
+}
+
+function waUrl() {
+  return 'https://wa.me/' + settings.whatsapp + '?text=' + encodeURIComponent(buildWhatsAppMessage());
+}
+
+function sendToWhatsApp() {
+  if (S.uploadingProof) {
+    toast('Espera un segundo mientras termina de subir tu captura...', false);
+    return;
+  }
+  window.open(waUrl(), '_blank', 'noopener,noreferrer');
+  show('rc', false);
 }
 
 function renderReceiptContent() {
@@ -829,8 +858,6 @@ function renderReceiptContent() {
     balanceHtml +
     '<div class="rt"><span>' + (br.isReserve ? 'A YAPEAR (SEPARACIÓN):' : 'TOTAL A YAPEAR:') + '</span><span>' + money(br.payNow) + '</span></div>' +
     '<div class="rf">Yape / Plin: ' + esc(settings.yapeNumber) + '<br>Envía tu captura de pago por WhatsApp</div>';
-
-  $('#rwa').href = waUrl();
 }
 
 function openReceipt() {
@@ -890,10 +917,11 @@ var A = {
   zone: function (t) { S.zone = t.dataset.z === 'provincia' ? 'provincia' : 'lima'; saveMeta(); renderCart(); },
   paymode: function (t) { S.payMode = t.dataset.m === 'reserve' ? 'reserve' : 'full'; renderReceiptContent(); },
   rmproof: function () {
-    if (S.proofUrl) URL.revokeObjectURL(S.proofUrl);
-    S.proofFile = null; S.proofUrl = '';
+    if (S.proofLocalUrl) URL.revokeObjectURL(S.proofLocalUrl);
+    S.proofName = ''; S.proofLocalUrl = ''; S.proofRemoteUrl = ''; S.uploadingProof = false;
     $('#proof-input').value = '';
-    $('#proof-prev').hidden = true;
+    $('#proof-wrap').hidden = true;
+    $('#proof-btn-txt').textContent = 'Adjuntar captura de pago Yape';
     renderReceiptContent();
   },
   reset: function () { S.q = ''; S.brand = 'Todos'; $('#q').value = ''; $('#qx').hidden = true; tabs(); renderGrid(); },
@@ -904,10 +932,7 @@ var A = {
   bd: function (t, e) { if (e.target === t) closeTop(); },
   receipt: openReceipt,
   back: function () { show('rc', false); show('cart', true); },
-  wa: function () {
-    if (S.proofFile) toast('Recuerda adjuntar tu captura (' + S.proofFile.name + ') en el chat de WhatsApp.', false);
-    show('rc', false);
-  },
+  wa: function () { sendToWhatsApp(); },
   dl: function (t) { download(t); },
   cs: function (t) { copy(plainText(), t, ic('copy') + 'Copiar resumen en texto'); },
   cy: function (t) { copy(settings.yapeNumber, t, 'Copiar número'); },
@@ -927,17 +952,42 @@ document.addEventListener('error', function (e) {
   }
 }, true);
 
-$('#proof-input').addEventListener('change', function (e) {
+$('#proof-input').addEventListener('change', async function (e) {
   var file = e.target.files && e.target.files[0];
   if (!file) return;
-  if (S.proofUrl) URL.revokeObjectURL(S.proofUrl);
-  S.proofFile = file;
-  S.proofUrl = URL.createObjectURL(file);
-  $('#proof-img').src = S.proofUrl;
+  if (S.proofLocalUrl) URL.revokeObjectURL(S.proofLocalUrl);
+
+  S.proofName = file.name;
+  S.proofLocalUrl = URL.createObjectURL(file);
+  S.proofRemoteUrl = '';
+  S.uploadingProof = true;
+
+  $('#proof-img').src = S.proofLocalUrl;
   $('#proof-name').textContent = file.name;
-  $('#proof-prev').hidden = false;
-  renderReceiptContent();
-  toast('Captura lista. Al abrir WhatsApp adjúntala en el chat.', false);
+  $('#proof-status').textContent = 'Subiendo captura para enviarla por WhatsApp...';
+  $('#proof-wrap').hidden = false;
+  $('#rwa').disabled = true;
+
+  try {
+    var dataUrl = await compressProofToDataUrl(file);
+    var res = await fetch('/api/proof', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ image: dataUrl })
+    });
+    var json = await res.json();
+    if (!res.ok || !json.url) throw new Error(json.error || 'No se pudo subir la captura.');
+    S.proofRemoteUrl = json.url;
+    $('#proof-status').textContent = 'Captura lista. Se enviará automáticamente en tu mensaje de WhatsApp.';
+    toast('Captura subida y lista para WhatsApp.', false);
+  } catch (err) {
+    $('#proof-status').textContent = 'No se pudo subir automáticamente. Adjúntala manualmente en el chat de WhatsApp.';
+    toast(err.message || 'Error al subir captura.', false);
+  } finally {
+    S.uploadingProof = false;
+    $('#rwa').disabled = false;
+    renderReceiptContent();
+  }
 });
 
 $('#q').addEventListener('input', function (e) { S.q = e.target.value; $('#qx').hidden = !S.q; renderGrid(); });
