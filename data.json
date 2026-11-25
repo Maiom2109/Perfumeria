@@ -37,7 +37,7 @@
       "desc": "Perfecto para la noche.",
       "price": 129,
       "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSRFZWkaKX4zI9enfxtOuIZTgONTEzwf3MCQNWe23t2Ng&s=10",
-      "active": true
+      "active": false
     },
     {
       "id": 5,
@@ -53,7 +53,7 @@
       "desc": "Frescura extrema y duradera.",
       "price": 149,
       "img": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTag-zpvAIMQm3Hxw6PllG_5dq8PexR7HMqcIjLQTFKXw&s=10",
-      "active": true
+      "active": false
     }
   ]
 }
