@@ -17,23 +17,6 @@
 <meta property="og:url" content="https://tienda-arenas.onrender.com/">
 <meta property="og:locale" content="es_PE">
 
-<script type="application/ld+json">
-{
-  "@context": "https://schema.org",
-  "@graph": [
-    {
-      "@type": "Store",
-      "name": "Tienda ARENAS",
-      "description": "Perfumes árabes originales y decants de 5 ml, 10 ml y 15 ml en Lima y Perú.",
-      "url": "https://tienda-arenas.onrender.com/",
-      "areaServed": { "@type": "Country", "name": "Peru" },
-      "paymentAccepted": "Yape, Plin",
-      "currenciesAccepted": "PEN"
-    }
-  ]
-}
-</script>
-
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&display=swap" rel="stylesheet">
@@ -52,12 +35,13 @@ img{display:block;max-width:100%}
 :focus-visible{outline:1.5px solid #fff;outline-offset:3px}
 .ic{width:1.15em;height:1.15em;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em;flex:none}
 
-/* Intro con logo */
+/* Intro con logo personalizable */
 #splash{position:fixed;inset:0;z-index:100;background:#000;display:grid;place-items:center;clip-path:inset(0);transition:clip-path 1s cubic-bezier(.76,0,.24,1);animation:away .01s 5s forwards}
 #splash.out{clip-path:inset(0 0 100% 0)}
 .sp{text-align:center}
 .sp svg{width:60px;height:60px;margin:0 auto 28px;display:block;fill:none;stroke:#fff;stroke-width:1}
 .sp svg *{stroke-dasharray:1;stroke-dashoffset:1;animation:draw 1.4s var(--ease) .1s forwards}
+.sp-custom-logo{width:82px;height:82px;object-fit:contain;margin:0 auto 24px;border-radius:50%;animation:fade .9s ease .15s both}
 .sp-w{display:flex;justify-content:center;padding-left:.3em;font:500 clamp(42px,12vw,80px)/1 var(--serif);letter-spacing:.3em}
 .sp-w span{opacity:0;filter:blur(8px);transform:translateY(10px);animation:rise 1s var(--ease) forwards;animation-delay:calc(.5s + var(--i)*.07s)}
 .sp-l{display:block;width:120px;height:1px;margin:24px auto 0;background:#fff;opacity:.5;transform:scaleX(0);animation:grow 1.1s var(--ease) 1.2s forwards}
@@ -77,13 +61,14 @@ img{display:block;max-width:100%}
 header.top{position:sticky;top:0;z-index:40;display:flex;align-items:center;justify-content:space-between;padding:12px clamp(16px,4vw,40px);border-bottom:1px solid var(--ln);background:rgba(9,9,11,.88);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
 .logo{display:flex;align-items:center;gap:10px;font:600 21px var(--serif);letter-spacing:.28em;text-decoration:none}
 .mk{width:26px;height:26px;stroke-width:2}
+.logo-img{width:30px;height:30px;object-fit:contain;border-radius:50%;flex:none}
 .cartbtn{display:flex;align-items:center;gap:8px;padding:8px 16px;border:1px solid var(--ln);border-radius:99px;font-size:13px;transition:border-color .2s}
 .cartbtn:hover{border-color:#fff}
 .cartbtn.bump{animation:bump .45s var(--ease)}
 .cartbtn b{min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:#fff;color:#000;font-size:11px;display:grid;place-items:center}
 
 .hero{position:relative;text-align:center;padding:clamp(28px,5vh,54px) 20px clamp(28px,4.5vh,44px);overflow:hidden;border-bottom:1px solid var(--ln)}
-.mk-bg{position:absolute;left:50%;top:50%;width:min(70vw,380px);height:min(70vw,380px);transform:translate(-50%,-50%);opacity:.05;stroke-width:.35;pointer-events:none}
+.mk-bg{position:absolute;left:50%;top:50%;width:min(70vw,380px);height:min(70vw,380px);transform:translate(-50%,-50%);opacity:.05;stroke-width:.35;pointer-events:none;object-fit:contain}
 .hero>*{position:relative}
 .hero-kicker{font-size:11px;text-transform:uppercase;letter-spacing:.28em;color:var(--mu);margin-bottom:10px}
 .hero h1{font:500 clamp(30px,5.2vw,58px)/1.08 var(--serif);max-width:18ch;margin:0 auto}
@@ -118,7 +103,7 @@ body.ready .rv{animation:up .8s var(--ease) both;animation-delay:var(--d,0s)}
 .card{opacity:0;transform:translateY(14px);transition:opacity .7s var(--ease),transform .7s var(--ease);transition-delay:var(--d,0s)}
 .card.in{opacity:1;transform:none}
 .ph{position:relative;display:block;width:100%;aspect-ratio:4/5;overflow:hidden;background:var(--s2);border-radius:6px;cursor:zoom-in}
-.ph.noimg::after{content:'ARENAS';position:absolute;inset:0;display:grid;place-items:center;font:600 18px var(--serif);letter-spacing:.32em;color:var(--mu);opacity:.45;pointer-events:none}
+.ph.noimg::after{content:attr(data-brand);position:absolute;inset:0;display:grid;place-items:center;font:600 18px var(--serif);letter-spacing:.32em;color:var(--mu);opacity:.45;pointer-events:none}
 .ph img{width:100%;height:100%;object-fit:cover;transition:transform .9s var(--ease)}
 .ph:hover img{transform:scale(1.07)}
 .ph img.bad{visibility:hidden}
@@ -146,7 +131,8 @@ summary::after{content:'+';color:var(--mu);font:300 24px/1 var(--serif)}
 details[open] summary::after{content:'–'}
 details p{color:var(--mu);padding:0 0 20px;max-width:62ch;font-size:14px}
 footer{margin-top:88px;padding:42px 20px 36px;border-top:1px solid var(--ln);text-align:center;color:var(--mu);font-size:13px}
-footer .mk{display:block;margin:0 auto 12px}
+footer .mk, footer .footer-logo-img{display:block;margin:0 auto 12px}
+.footer-logo-img{width:38px;height:38px;object-fit:contain;border-radius:50%}
 .fb{font:600 22px var(--serif);letter-spacing:.3em;color:#fff;padding-left:.3em}
 footer p{margin-top:6px}
 footer a{display:inline-block;margin-top:14px;color:var(--tx)}
@@ -267,23 +253,29 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 
 <div id="splash" aria-hidden="true">
   <div class="sp">
-    <svg viewBox="0 0 64 64"><circle pathLength="1" cx="32" cy="32" r="30"/><circle pathLength="1" cx="32" cy="21" r="4"/><path pathLength="1" d="M6 40c9-9 17-9 26 0s17 9 26 0"/><path pathLength="1" d="M12 50c7-6 13-6 20 0s13 6 20 0"/></svg>
-    <div class="sp-w"><span style="--i:0">A</span><span style="--i:1">R</span><span style="--i:2">E</span><span style="--i:3">N</span><span style="--i:4">A</span><span style="--i:5">S</span></div>
+    <svg id="sp-svg" viewBox="0 0 64 64"><circle pathLength="1" cx="32" cy="32" r="30"/><circle pathLength="1" cx="32" cy="21" r="4"/><path pathLength="1" d="M6 40c9-9 17-9 26 0s17 9 26 0"/><path pathLength="1" d="M12 50c7-6 13-6 20 0s13 6 20 0"/></svg>
+    <img id="sp-logo-img" class="sp-custom-logo" alt="" hidden>
+    <div class="sp-w" id="sp-word"><span style="--i:0">A</span><span style="--i:1">R</span><span style="--i:2">E</span><span style="--i:3">N</span><span style="--i:4">A</span><span style="--i:5">S</span></div>
     <i class="sp-l"></i>
-    <p>perfumería árabe</p>
+    <p id="sp-sub">perfumería árabe</p>
   </div>
 </div>
 
 <div class="bar" id="bar" hidden></div>
 
 <header class="top" id="top">
-  <a class="logo" href="#" aria-label="ARENAS, ir al inicio"><svg class="ic mk"><use href="#mk"/></svg><span class="bt">ARENAS</span></a>
+  <a class="logo" href="#" aria-label="Inicio">
+    <svg class="ic mk" id="hdr-svg"><use href="#mk"/></svg>
+    <img class="logo-img" id="hdr-logo-img" alt="" hidden>
+    <span class="bt">ARENAS</span>
+  </a>
   <button class="cartbtn" data-a="opencart" aria-label="Abrir tu pedido"><i data-i="bag"></i><span>Mi pedido</span><b id="cn" hidden>0</b></button>
 </header>
 
 <main>
   <section class="hero">
-    <svg class="ic mk-bg" aria-hidden="true"><use href="#mk"/></svg>
+    <svg class="ic mk-bg" id="hero-svg" aria-hidden="true"><use href="#mk"/></svg>
+    <img class="mk-bg" id="hero-logo-img" alt="" aria-hidden="true" hidden>
     <p class="hero-kicker rv bs" style="--d:.02s">Perfumes Árabes &amp; Decants</p>
     <h1 class="rv" id="hero-title" style="--d:.08s">Perfumes árabes originales y decants en Lima</h1>
     <p class="lead rv" id="hero-sub" style="--d:.18s">Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.</p>
@@ -310,15 +302,13 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 
   <section class="faq">
     <h2>Preguntas frecuentes</h2>
-    <details><summary>¿Los perfumes árabes son 100% originales?</summary><p>Sí, en <span class="bt">ARENAS</span> trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía.</p></details>
-    <details><summary>¿Cómo se realizan los pagos?</summary><p>Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda (<span class="yp"></span>) o escaneando nuestro QR.</p></details>
-    <details><summary>¿Cómo funcionan los envíos a Lima y Provincia?</summary><p id="faq-ship">Realizamos entregas en Lima y envíos a todo el Perú por agencia (Shalom / Olva) con pago en destino.</p></details>
-    <details><summary>¿Puedo separar un perfume con adelanto?</summary><p id="faq-res">Sí, puedes separar cada perfume con S/ 20.00 y cancelar la diferencia al momento de la entrega o antes del despacho.</p></details>
+    <div id="faq-list"></div>
   </section>
 </main>
 
 <footer>
-  <svg class="ic mk"><use href="#mk"/></svg>
+  <svg class="ic mk" id="ftr-svg"><use href="#mk"/></svg>
+  <img class="footer-logo-img" id="ftr-logo-img" alt="" hidden>
   <div class="fb bt">ARENAS</div>
   <p class="bs">Perfumes Árabes &amp; Decants</p>
   <p>&copy; <span id="yr"></span> <span class="bt">ARENAS</span>. Todos los derechos reservados.</p>
@@ -419,7 +409,6 @@ footer a{display:inline-block;margin-top:14px;color:var(--tx)}
 var KEY = 'arenas_cart_v1';
 var META_KEY = 'arenas_customer_v2';
 var H2C = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-var BRANDS = ['Todos', 'Lattafa', 'Rasasi', 'Afnan', 'Armaf', 'Al Haramain'];
 var $ = function (s, r) { return (r || document).querySelector(s); };
 var $$ = function (s) { return Array.prototype.slice.call(document.querySelectorAll(s)); };
 var esc = function (s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); };
@@ -434,9 +423,12 @@ var S = {
 var settings = {
   brandTitle: 'ARENAS',
   brandSubtitle: 'Perfumes Árabes & Decants',
+  splashSubtitle: 'perfumería árabe',
+  brandLogoImg: '',
   heroTitle: 'Perfumes árabes originales y decants en Lima',
   heroSubtitle: 'Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.',
   heroCtaText: 'Ver colección',
+  brandTabs: 'Lattafa, Rasasi, Afnan, Armaf, Al Haramain',
   shippingText: 'Delivery en Lima S/ 12.00',
   yapeNumber: '',
   yapeQrImg: '',
@@ -447,7 +439,15 @@ var settings = {
   provinceShippingEnabled: true,
   provinceShippingText: 'Envío a provincia (pago en destino al recibir)',
   reservationEnabled: true,
-  reservationPerItem: 20
+  reservationPerItem: 20,
+  faq1Q: '¿Los perfumes árabes son 100% originales?',
+  faq1A: 'Sí, trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía.',
+  faq2Q: '¿Cómo se realizan los pagos?',
+  faq2A: 'Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda o escaneando nuestro QR.',
+  faq3Q: '¿Cómo funcionan los envíos a Lima y Provincia?',
+  faq3A: 'Realizamos entregas en Lima y envíos a todo el Perú por agencia (Shalom / Olva) con pago en destino.',
+  faq4Q: '¿Puedo separar un perfume con adelanto?',
+  faq4A: 'Sí, puedes separar cada perfume con el monto indicado en la boleta y cancelar la diferencia al momento de la entrega o antes del despacho.'
 };
 var READY = false, io = null, tt = 0, lastTrigger = null, downloading = false;
 
@@ -478,6 +478,11 @@ var qtyInCart = function (id) {
 };
 var count = function () { return S.cart.reduce(function (s, i) { return s + i.qty; }, 0); };
 var sub = function () { return S.cart.reduce(function (s, i) { return s + i.price * i.qty; }, 0); };
+
+function getBrandsList() {
+  var raw = String(settings.brandTabs || '').split(',').map(function (x) { return x.trim(); }).filter(Boolean);
+  return ['Todos'].concat(raw);
+}
 
 function getShippingInfo() {
   if (!S.cart.length) return { charged: 0, label: 'Envío', text: 'S/ 0.00', note: '' };
@@ -538,7 +543,9 @@ function badge(p) {
 
 /* ---------- Render ---------- */
 function tabs() {
-  $('#tabs').innerHTML = BRANDS.map(function (b) {
+  var list = getBrandsList();
+  if (list.indexOf(S.brand) === -1) S.brand = 'Todos';
+  $('#tabs').innerHTML = list.map(function (b) {
     var active = b === S.brand;
     return '<button role="tab" aria-selected="' + active + '" class="' + (active ? 'on' : '') + '" data-a="brand" data-b="' + esc(b) + '">' + esc(b) + '</button>';
   }).join('');
@@ -551,8 +558,8 @@ function addBtnLabel(id) {
 
 function card(p, i) {
   var b = badge(p);
-  return '<article class="card" style="--d:' + (i % 8) * 0.05 + 's"><button class="ph" data-a="view" data-id="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' +
-    '<img src="' + esc(p.img) + '" alt="' + esc(p.name) + ' - Perfume árabe" loading="lazy">' +
+  return '<article class="card" style="--d:' + (i % 8) * 0.05 + 's"><button class="ph" data-brand="' + esc(settings.brandTitle) + '" data-a="view" data-id="' + esc(p.id) + '" aria-label="Ver ' + esc(p.name) + '">' +
+    '<img src="' + esc(p.img) + '" alt="' + esc(p.name) + '" loading="lazy">' +
     (b ? '<span class="tag">' + b + '</span>' : '') + '<span class="qv-h">Vista rápida</span></button>' +
     '<div class="inf"><h2>' + esc(p.name) + '</h2><p>' + esc(p.desc) + '</p><div class="row"><b>' + money(p.price) + '</b>' +
     '<button class="add" data-a="add" data-card-id="' + esc(p.id) + '" data-id="' + esc(p.id) + '">' + addBtnLabel(p.id) + '</button></div></div></article>';
@@ -628,10 +635,58 @@ function renderCart() {
   save();
 }
 
-function applySettings() {
-  $$('.bt').forEach(function (e) { e.textContent = settings.brandTitle; });
+function renderFaq() {
+  var items = [
+    { q: settings.faq1Q, a: settings.faq1A },
+    { q: settings.faq2Q, a: settings.faq2A },
+    { q: settings.faq3Q, a: settings.faq3A },
+    { q: settings.faq4Q, a: settings.faq4A }
+  ].filter(function (x) { return x.q && x.a; });
+
+  $('#faq-list').innerHTML = items.map(function (x) {
+    return '<details><summary>' + esc(x.q) + '</summary><p>' + esc(x.a) + '</p></details>';
+  }).join('');
+}
+
+function applyBrandLogo() {
+  var logo = String(settings.brandLogoImg || '').trim();
+  var hasCustom = Boolean(logo);
+
+  $('#sp-svg').hidden = hasCustom;
+  $('#sp-logo-img').hidden = !hasCustom;
+  if (hasCustom) $('#sp-logo-img').src = logo;
+
+  $('#hdr-svg').hidden = hasCustom;
+  $('#hdr-logo-img').hidden = !hasCustom;
+  if (hasCustom) $('#hdr-logo-img').src = logo;
+
+  $('#hero-svg').hidden = hasCustom;
+  $('#hero-logo-img').hidden = !hasCustom;
+  if (hasCustom) $('#hero-logo-img').src = logo;
+
+  $('#ftr-svg').hidden = hasCustom;
+  $('#ftr-logo-img').hidden = !hasCustom;
+  if (hasCustom) $('#ftr-logo-img').src = logo;
+}
+
+function applyBrandWord() {
+  var title = String(settings.brandTitle || 'ARENAS').trim();
+  document.title = title + ' | ' + (settings.brandSubtitle || 'Perfumes Árabes & Decants');
+  $$('.bt').forEach(function (e) { e.textContent = title; });
   $$('.bs').forEach(function (e) { e.textContent = settings.brandSubtitle; });
   $$('.yp').forEach(function (e) { e.textContent = settings.yapeNumber; });
+
+  $('#sp-sub').textContent = settings.splashSubtitle || 'perfumería árabe';
+  $('#sp-word').innerHTML = Array.from(title).map(function (ch, idx) {
+    return '<span style="--i:' + idx + '">' + (ch === ' ' ? '&nbsp;' : esc(ch)) + '</span>';
+  }).join('');
+}
+
+function applySettings() {
+  applyBrandLogo();
+  applyBrandWord();
+  tabs();
+  renderFaq();
 
   if (settings.heroTitle) $('#hero-title').textContent = settings.heroTitle;
   if (settings.heroSubtitle) $('#hero-sub').textContent = settings.heroSubtitle;
@@ -646,11 +701,6 @@ function applySettings() {
   var shipLabel = shipSummary.join(' · ') || 'Envíos coordinados';
   $('#trust-ship').textContent = shipLabel;
   $('#qv-ship').textContent = shipLabel;
-  $('#faq-ship').textContent = (settings.limaShippingEnabled !== false ? 'En Lima (' + (settings.limaPaymentMode === 'cod' ? 'pago de envío al recibir' : 'tarifa ' + money(settings.limaShippingCost)) + '). ' : '') +
-    (settings.provinceShippingEnabled !== false ? settings.provinceShippingText : '');
-  $('#faq-res').textContent = settings.reservationEnabled
-    ? 'Sí, puedes separar cada perfume con ' + money(settings.reservationPerItem) + ' y pagar el saldo restante al recibir.'
-    : 'Consulta por WhatsApp nuestras modalidades de reserva.';
 
   var qrEl = $('#rc-qr');
   if (settings.yapeQrImg) {
@@ -886,7 +936,7 @@ function download(btn) {
   btn.textContent = 'Generando imagen...';
   loadScript(H2C).then(function () { return window.html2canvas($('#receipt'), { backgroundColor: '#111113', scale: 2, useCORS: true }); })
     .then(function (c) {
-      var a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'Boleta_ARENAS_' + Date.now() + '.png'; a.click();
+      var a = document.createElement('a'); a.href = c.toDataURL('image/png'); a.download = 'Boleta_' + (settings.brandTitle || 'ARENAS') + '_' + Date.now() + '.png'; a.click();
       btn.textContent = 'Boleta descargada (descargar otra vez)';
     })
     .catch(function () {
@@ -999,7 +1049,7 @@ $$('i[data-i]').forEach(function (e) { e.outerHTML = ic(e.dataset.i); });
 $('#yr').textContent = new Date().getFullYear();
 $('#cname').value = S.name;
 $('#cdist').value = S.dist;
-tabs(); renderCart(); renderGrid();
+tabs(); renderFaq(); renderCart(); renderGrid();
 
 function ready() {
   READY = true;
