@@ -215,7 +215,7 @@ async function loadFromGitHub() {
 }
 
 async function ghWrite(data, attempt = 0) {
-  const { sha } = await ghGetFile(); // solo necesitamos el SHA actual
+  const { sha } = await ghGetFile();
   const res = await ghFetch(ghUrl, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -226,7 +226,7 @@ async function ghWrite(data, attempt = 0) {
       branch: GITHUB_BRANCH,
     }),
   });
-  if ((res.status === 409 || res.status === 422) && attempt === 0) return ghWrite(data, 1); // conflicto de SHA: reintenta una vez
+  if ((res.status === 409 || res.status === 422) && attempt === 0) return ghWrite(data, 1);
   if (!res.ok) throw ghFail(res.status);
 }
 
@@ -251,6 +251,14 @@ function getData(force) {
 
 /* Para la tienda: si GitHub falla, usa la última copia buena o el data.json del despliegue */
 async function getPublicData() {
+  if (!GITHUB_TOKEN) {
+    if (!cache.data) {
+      const local = await fs.readFile(path.join(__dirname, FILE_PATH), 'utf8');
+      cache = { data: normalizeStored(JSON.parse(local)), ts: Date.now() };
+    }
+    return cache.data;
+  }
+
   try {
     return await getData(false);
   } catch (err) {
@@ -332,8 +340,8 @@ app.use(
         frameAncestors: ["'none'"],
         formAction: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", ...CDN],
-        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
-        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com', 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'https://fonts.gstatic.com', 'data:'],
         imgSrc: ["'self'", 'https:', 'data:', 'blob:'],
         connectSrc: ["'self'"],
       },
@@ -390,15 +398,19 @@ const loginLimiter = rateLimit({
 function originGuard(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
   const origin = req.get('origin');
-  if (origin) {
-    let host = null;
-    try {
-      host = new URL(origin).host;
-    } catch (e) {
-      /* origen inválido */
+  if (!origin) {
+    if (process.env.NODE_ENV === 'production') {
+      return next(new HttpError(403, 'Cabecera Origin requerida.'));
     }
-    if (host !== req.get('host')) return next(new HttpError(403, 'Origen no permitido.'));
+    return next();
   }
+  let host = null;
+  try {
+    host = new URL(origin).host;
+  } catch (e) {
+    /* origen inválido */
+  }
+  if (host !== req.get('host')) return next(new HttpError(403, 'Origen no permitido.'));
   next();
 }
 
