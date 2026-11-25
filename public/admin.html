@@ -130,7 +130,14 @@
                 window.addEventListener('keydown', h);
                 return () => window.removeEventListener('keydown', h);
             }, [onClose]);
-            return <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-3 overflow-y-auto">{children}</div>;
+            return (
+                <div
+                    onMouseDown={(e) => { if (e.target === e.currentTarget) onClose(); }}
+                    className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-3 overflow-y-auto"
+                >
+                    {children}
+                </div>
+            );
         }
 
         function Confirm({ title, text, okLabel, onOk, onClose }) {
@@ -150,6 +157,7 @@
 
         function Login({ enabled, expired, onDone }) {
             const [pw, setPw] = useState('');
+            const [showPw, setShowPw] = useState(false);
             const [busy, setBusy] = useState(false);
             const [err, setErr] = useState('');
             const submit = async (ev) => {
@@ -167,7 +175,25 @@
                         {expired && <p className="text-xs text-zinc-200 border border-zinc-700 rounded-xl p-3 mb-4"><i className="fas fa-clock mr-1.5"></i>Tu sesión expiró. Ingresa de nuevo: tus cambios sin guardar se conservan.</p>}
                         {!enabled && <p className="text-xs text-white border border-white rounded-xl p-3 mb-4"><i className="fas fa-triangle-exclamation mr-1.5"></i>El panel no está configurado en el servidor (faltan ADMIN_PASSWORD o SESSION_SECRET).</p>}
                         <Field label="Contraseña" error={err}>
-                            <input type="password" autoComplete="current-password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Tu contraseña" className={inp(err)} />
+                            <div className="relative">
+                                <input
+                                    type={showPw ? 'text' : 'password'}
+                                    autoComplete="current-password"
+                                    autoFocus
+                                    value={pw}
+                                    onChange={(e) => setPw(e.target.value)}
+                                    placeholder="Tu contraseña"
+                                    className={inp(err) + ' !pr-11'}
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPw((v) => !v)}
+                                    aria-label={showPw ? 'Ocultar contraseña' : 'Ver contraseña'}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white p-1"
+                                >
+                                    <i className={'fas ' + (showPw ? 'fa-eye-slash' : 'fa-eye')}></i>
+                                </button>
+                            </div>
                         </Field>
                         <button type="submit" disabled={busy || !enabled} className={btnPrimary + ' w-full mt-5'}>
                             {busy && <i className="fas fa-spinner fa-spin"></i>}{busy ? 'Entrando...' : 'Entrar al panel'}
@@ -239,10 +265,17 @@
         }
 
         function Row({ p, index, total, canMove, onEdit, onToggle, onDup, onMove, onDelete }) {
+            const [broken, setBroken] = useState(false);
+            useEffect(() => { setBroken(false); }, [p.img]);
+
             return (
                 <div className={'bg-zinc-900 border border-zinc-800 rounded-2xl p-3 sm:p-4 ' + (p.active ? '' : 'opacity-60')}>
                     <div className="flex gap-3">
-                        <img src={p.img} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-zinc-800 bg-black flex-shrink-0" onError={(ev) => { ev.currentTarget.style.opacity = 0; }} />
+                        <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-zinc-800 bg-black flex-shrink-0 overflow-hidden flex items-center justify-center text-zinc-600">
+                            {!broken && p.img
+                                ? <img src={p.img} alt="" className="w-full h-full object-cover" onError={() => setBroken(true)} />
+                                : <i className="fas fa-image text-lg" title="Sin vista previa"></i>}
+                        </div>
                         <div className="min-w-0 flex-grow">
                             <div className="flex items-start justify-between gap-2">
                                 <h3 className="font-bold text-sm text-white break-words">{p.name || '(sin nombre)'}</h3>
@@ -271,7 +304,7 @@
         const FIELDS = [
             ['brandTitle', 'Título de la tienda', 'Ej. ARENAS', 'Máximo 40 caracteres.'],
             ['brandSubtitle', 'Subtítulo', 'Ej. Perfumes Árabes & Decants', 'Máximo 60 caracteres.'],
-            ['shippingText', 'Texto de envío (barra superior)', 'Ej. Delivery en Lima S/ 12.00', 'Máximo 80 caracteres. El costo real del delivery (S/ 12.00) está fijo en index.html.'],
+            ['shippingText', 'Texto y tarifa de envío', 'Ej. Delivery en Lima S/ 12.00', 'Máximo 80 caracteres. Si incluyes un monto (ej. S/ 12.00), la tienda lo usará automáticamente al calcular el total.'],
             ['whatsapp', 'WhatsApp de contacto', '51XXXXXXXXX', 'Solo números, con código de país: 51 + 9 dígitos.'],
             ['yapeNumber', 'Número de Yape / Plin', '9XXXXXXXX', '9 dígitos, empieza con 9.'],
         ];
@@ -348,6 +381,20 @@
             const askLogout = () => dirty
                 ? setConfirm({ title: 'Cerrar sesión', text: 'Tienes cambios sin guardar. Si cierras sesión se perderán.', okLabel: 'Cerrar sesión', onOk: doLogout })
                 : doLogout();
+
+            const askDiscard = () => setConfirm({
+                title: 'Descartar cambios',
+                text: 'Se volverá a la última versión guardada y perderás los cambios pendientes.',
+                okLabel: 'Descartar',
+                onOk: () => {
+                    try {
+                        setDraft(hydrate(JSON.parse(saved)));
+                        toast('Cambios descartados.');
+                    } catch (e) {
+                        load();
+                    }
+                },
+            });
 
             async function save() {
                 if (Object.keys(validateSettings(draft.settings)).length) { setTab('config'); return toast('Revisa los datos de la configuración.', 'err'); }
@@ -426,6 +473,7 @@
 
             const q = search.trim().toLowerCase();
             const list = draft.perfumes.filter((p) => !q || p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+            const activeCount = draft.perfumes.filter((p) => p.active).length;
             const tabCls = (on) => BTN + 'flex-1 ' + (on ? 'bg-white text-zinc-950' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white');
 
             return (
@@ -435,7 +483,7 @@
                         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                             <div>
                                 <h1 className="text-xl font-black tracking-[0.2em] text-white leading-none">ARENAS</h1>
-                                <p className="text-[11px] text-zinc-400 mt-1">Panel de administración</p>
+                                <p className="text-[11px] text-zinc-400 mt-1">Panel de administración · {activeCount}/{draft.perfumes.length} visibles</p>
                             </div>
                             <div className="flex gap-2">
                                 <a href="/" target="_blank" rel="noopener" className={btnGhost + ' !px-3 !py-2.5'}><i className="fas fa-arrow-up-right-from-square"></i><span className="hidden sm:inline">Ver tienda</span></a>
@@ -482,14 +530,21 @@
 
                     <div className="fixed bottom-0 inset-x-0 z-40 bg-black/95 border-t border-zinc-800">
                         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-                            <p className="text-xs flex items-center gap-2">
+                            <p className="text-xs flex items-center gap-2 min-w-0">
                                 {dirty
-                                    ? <><span className="w-2 h-2 rounded-full bg-white animate-pulse"></span><span className="text-white font-semibold">Cambios sin guardar</span></>
+                                    ? <><span className="w-2 h-2 rounded-full bg-white animate-pulse flex-shrink-0"></span><span className="text-white font-semibold truncate">Cambios sin guardar</span></>
                                     : <><i className="fas fa-check text-zinc-500"></i><span className="text-zinc-400">Todo guardado</span></>}
                             </p>
-                            <button type="button" onClick={save} disabled={!dirty || saving} className={btnPrimary}>
-                                {saving && <i className="fas fa-spinner fa-spin"></i>}{saving ? 'Guardando...' : 'Guardar cambios'}
-                            </button>
+                            <div className="flex items-center gap-2 flex-shrink-0">
+                                {dirty && (
+                                    <button type="button" onClick={askDiscard} disabled={saving} className={btnGhost + ' !px-3'}>
+                                        Descartar
+                                    </button>
+                                )}
+                                <button type="button" onClick={save} disabled={!dirty || saving} className={btnPrimary}>
+                                    {saving && <i className="fas fa-spinner fa-spin"></i>}{saving ? 'Guardando...' : 'Guardar cambios'}
+                                </button>
+                            </div>
                         </div>
                     </div>
 
