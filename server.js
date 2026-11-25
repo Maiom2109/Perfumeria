@@ -9,656 +9,481 @@ const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
 
-const app = express();
-
-app.set('trust proxy', 1);
-
-const PORT = Number(process.env.PORT) || 3000;
+/* ===================== Configuración ===================== */
+const PORT = process.env.PORT || 3000;
 const GITHUB_TOKEN = process.env.GITHUB_TOKEN || '';
-const GITHUB_OWNER = process.env.GITHUB_OWNER || '';
-const GITHUB_REPO = process.env.GITHUB_REPO || '';
-const DEFAULT_BRANCH = (process.env.GITHUB_BRANCH || 'data').trim() || 'data';
-const DATA_PATH = 'data.json';
+const GITHUB_OWNER = process.env.GITHUB_OWNER || 'Maiom2109';
+const GITHUB_REPO = process.env.GITHUB_REPO || 'Perfumeria';
+const GITHUB_BRANCH = process.env.GITHUB_BRANCH || 'data';
+const FILE_PATH = 'data.json';
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const SESSION_SECRET = process.env.SESSION_SECRET || '';
-const COOKIE_NAME = 'arenas_admin_session';
-const SESSION_TTL_MS = 12 * 60 * 60 * 1000;
-const CACHE_TTL_MS = 60 * 1000;
+const ADMIN_ENABLED = ADMIN_PASSWORD.length >= 10 && SESSION_SECRET.length >= 32;
 
-const cacheStore = new Map();
-const lastGoodStore = new Map();
+const PUBLIC_DIR = path.join(__dirname, 'public');
+const COOKIE_NAME = 'arenas_session';
+const SESSION_MS = 12 * 60 * 60 * 1000; // 12 horas
+const CACHE_MS = 60 * 1000; // 60 segundos
+const CDN = ['https://cdn.tailwindcss.com', 'https://unpkg.com', 'https://cdnjs.cloudflare.com'];
 
-class AppError extends Error {
-  constructor(statusCode, message) {
+const DEFAULT_SETTINGS = {
+  brandTitle: 'ARENAS',
+  brandSubtitle: 'Perfumes Árabes & Decants',
+  shippingText: 'Delivery en Lima',
+  yapeNumber: '',
+  whatsapp: '',
+};
+
+class HttpError extends Error {
+  constructor(status, message) {
     super(message);
-    this.statusCode = statusCode;
-    this.expose = true;
+    this.status = status;
   }
 }
 
-function sha256Buffer(value) {
-  return crypto.createHash('sha256').update(String(value), 'utf8').digest();
-}
-
-function verifyPassword(inputPassword, expectedPassword) {
-  if (!inputPassword || !expectedPassword) return false;
-  const left = sha256Buffer(inputPassword);
-  const right = sha256Buffer(expectedPassword);
-  return crypto.timingSafeEqual(left, right);
-}
-
-function getSigningKey() {
-  if (SESSION_SECRET) return SESSION_SECRET;
-  if (process.env.NODE_ENV !== 'production') return 'dev-only-session-secret';
-  throw new AppError(500, 'Falta configurar SESSION_SECRET en el servidor.');
-}
-
-function signSessionToken(payloadObj) {
-  const encodedPayload = Buffer.from(JSON.stringify(payloadObj), 'utf8').toString('base64url');
-  const signature = crypto
-    .createHmac('sha256', getSigningKey())
-    .update(encodedPayload)
-    .digest('base64url');
-  return `${encodedPayload}.${signature}`;
-}
-
-function verifySessionToken(token) {
-  if (!token || typeof token !== 'string') return null;
-  const parts = token.split('.');
-  if (parts.length !== 2) return null;
-  const [encodedPayload, signature] = parts;
-  if (!encodedPayload || !signature) return null;
-
-  let expectedSig;
-  try {
-    expectedSig = crypto
-      .createHmac('sha256', getSigningKey())
-      .update(encodedPayload)
-      .digest('base64url');
-  } catch {
-    return null;
+/* ===================== Validación (zod) ===================== */
+z.setErrorMap((issue, ctx) => {
+  switch (issue.code) {
+    case 'invalid_type':
+      if (issue.expected === 'integer') return { message: 'debe ser un número entero' };
+      if (issue.received === 'undefined' || issue.received === 'null') return { message: 'es obligatorio' };
+      return { message: 'tiene un tipo de dato inválido' };
+    case 'invalid_union':
+      return { message: 'tiene un valor inválido' };
+    case 'too_small':
+      if (issue.type === 'string') {
+        return { message: issue.minimum <= 1 ? 'no puede estar vacío' : `debe tener al menos ${issue.minimum} caracteres` };
+      }
+      return { message: `no puede ser menor que ${issue.minimum}` };
+    case 'too_big':
+      if (issue.type === 'string') return { message: `no puede superar ${issue.maximum} caracteres` };
+      if (issue.type === 'array') return { message: `no puede tener más de ${issue.maximum} elementos` };
+      return { message: `no puede ser mayor que ${issue.maximum}` };
+    default:
+      return { message: ctx.defaultError };
   }
-
-  const sigBuf = Buffer.from(signature, 'utf8');
-  const expBuf = Buffer.from(expectedSig, 'utf8');
-  if (sigBuf.length !== expBuf.length) return null;
-  if (!crypto.timingSafeEqual(sigBuf, expBuf)) return null;
-
-  try {
-    const parsed = JSON.parse(Buffer.from(encodedPayload, 'base64url').toString('utf8'));
-    if (!parsed || parsed.role !== 'admin' || typeof parsed.exp !== 'number') return null;
-    if (Date.now() > parsed.exp) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
-}
-
-function parseCookies(cookieHeader) {
-  const cookies = {};
-  if (!cookieHeader || typeof cookieHeader !== 'string') return cookies;
-  const pairs = cookieHeader.split(';');
-  for (const pair of pairs) {
-    const idx = pair.indexOf('=');
-    if (idx === -1) continue;
-    const key = pair.slice(0, idx).trim();
-    const val = pair.slice(idx + 1).trim();
-    if (key) {
-      cookies[key] = decodeURIComponent(val);
-    }
-  }
-  return cookies;
-}
-
-function getSessionFromReq(req) {
-  const cookies = parseCookies(req.headers.cookie);
-  return verifySessionToken(cookies[COOKIE_NAME]);
-}
-
-function requireAdmin(req, res, next) {
-  const session = getSessionFromReq(req);
-  if (!session) {
-    return next(new AppError(401, 'No autorizado. Inicia sesión como administrador.'));
-  }
-  req.adminSession = session;
-  return next();
-}
-
-function setSessionCookie(req, res, token) {
-  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
-  res.cookie(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: Boolean(isHttps),
-    sameSite: 'strict',
-    maxAge: SESSION_TTL_MS,
-    path: '/'
-  });
-}
-
-function clearSessionCookie(req, res) {
-  const isHttps = req.secure || req.headers['x-forwarded-proto'] === 'https' || process.env.NODE_ENV === 'production';
-  res.clearCookie(COOKIE_NAME, {
-    httpOnly: true,
-    secure: Boolean(isHttps),
-    sameSite: 'strict',
-    path: '/'
-  });
-}
-
-function verifyOrigin(req, res, next) {
-  const method = req.method.toUpperCase();
-  if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-    return next();
-  }
-
-  const origin = req.headers.origin;
-  const host = req.headers.host;
-
-  if (!origin) {
-    if (process.env.NODE_ENV === 'production') {
-      return next(new AppError(403, 'Cabecera Origin requerida para esta operación.'));
-    }
-    return next();
-  }
-
-  try {
-    const parsedOrigin = new URL(origin);
-    const allowedHosts = new Set([host, 'tienda-arenas.onrender.com'].filter(Boolean));
-    if (!allowedHosts.has(parsedOrigin.host)) {
-      return next(new AppError(403, 'Origen no permitido.'));
-    }
-    return next();
-  } catch {
-    return next(new AppError(403, 'Cabecera Origin inválida.'));
-  }
-}
-
-const settingsSchema = z.object({
-  brandTitle: z.string().trim().min(1, 'El título es obligatorio').max(40, 'Máximo 40 caracteres'),
-  brandSubtitle: z.string().trim().min(1, 'El subtítulo es obligatorio').max(60, 'Máximo 60 caracteres'),
-  shippingText: z.string().trim().min(1, 'El texto de envío es obligatorio').max(80, 'Máximo 80 caracteres'),
-  yapeNumber: z.string().trim().regex(/^9\d{8}$/, 'Yape debe tener 9 dígitos y empezar con 9'),
-  whatsapp: z.string().trim().regex(/^51\d{9}$/, 'WhatsApp debe tener formato 51 seguido de 9 dígitos')
 });
 
-const perfumeInputSchema = z.object({
-  id: z.union([z.number().int().positive(), z.string().trim().min(1)]).optional().nullable(),
-  name: z.string().trim().min(1, 'El nombre es obligatorio').max(80, 'Máximo 80 caracteres'),
-  desc: z.string().trim().max(300, 'Máximo 300 caracteres').optional().default(''),
-  price: z.number({ invalid_type_error: 'El precio debe ser un número entero' })
-    .int('El precio debe ser un número entero')
-    .min(0, 'El precio no puede ser negativo')
-    .max(5000, 'El precio máximo es 5000'),
-  img: z.string().trim().max(500, 'URL demasiado larga').refine((val) => {
+const httpsUrl = z
+  .string()
+  .trim()
+  .min(1)
+  .max(500)
+  .refine((v) => {
     try {
-      const u = new URL(val);
-      return u.protocol === 'https:';
-    } catch {
+      return new URL(v).protocol === 'https:';
+    } catch (e) {
       return false;
     }
-  }, 'La imagen debe ser una URL HTTPS válida'),
-  active: z.boolean().optional().default(true)
+  }, 'debe ser una URL que empiece con https://');
+
+const settingsSchema = z.object({
+  brandTitle: z.string().trim().min(1).max(40),
+  brandSubtitle: z.string().trim().min(1).max(60),
+  shippingText: z.string().trim().min(1).max(80),
+  yapeNumber: z.string().trim().regex(/^9\d{8}$/, 'debe tener 9 dígitos y empezar con 9'),
+  whatsapp: z.string().trim().regex(/^51\d{9}$/, 'debe ser 51 + 9 dígitos (solo números)'),
 });
 
-const adminDataPayloadSchema = z.object({
+const perfumeSchema = z.object({
+  id: z.union([z.number().int().min(0), z.string().trim().min(1).max(40)]).nullish(),
+  name: z.string().trim().min(1).max(80),
+  desc: z.string().trim().max(300).default(''),
+  price: z.number().int().min(0).max(5000),
+  img: httpsUrl,
+  active: z.boolean().default(true),
+});
+
+const dataSchema = z.object({
   settings: settingsSchema,
-  perfumes: z.array(perfumeInputSchema).max(200, 'Máximo 200 perfumes permitidos'),
-  branch: z.string().trim().min(1).max(100).optional()
+  perfumes: z.array(perfumeSchema).max(200),
 });
 
-function normalizeAndValidateAdminPayload(rawBody, existingPerfumes = []) {
-  const parsed = adminDataPayloadSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    const firstIssue = parsed.error.issues[0];
-    throw new AppError(400, firstIssue ? firstIssue.message : 'Datos inválidos.');
-  }
+const LABELS = {
+  settings: 'Configuración', perfumes: 'Perfumes', brandTitle: 'Título', brandSubtitle: 'Subtítulo',
+  shippingText: 'Texto de envío', yapeNumber: 'Yape', whatsapp: 'WhatsApp', name: 'Nombre',
+  desc: 'Descripción', price: 'Precio', img: 'Imagen', active: 'Activo', id: 'ID',
+};
 
-  const { settings, perfumes, branch } = parsed.data;
-
-  const existingIds = new Set();
-  let maxNumericId = 0;
-
-  for (const item of existingPerfumes) {
-    if (item && item.id !== undefined && item.id !== null) {
-      existingIds.add(String(item.id));
-      const num = Number(item.id);
-      if (Number.isInteger(num) && num > maxNumericId) {
-        maxNumericId = num;
-      }
-    }
-  }
-
-  const seenInBatch = new Set();
-  const normalizedPerfumes = perfumes.map((item) => {
-    let assignedId = null;
-
-    if (item.id !== undefined && item.id !== null && String(item.id).trim() !== '') {
-      const candidateStr = String(item.id).trim();
-      const candidateNum = Number(candidateStr);
-      if (existingIds.has(candidateStr)) {
-        if (seenInBatch.has(candidateStr)) {
-          throw new AppError(400, `ID duplicado en perfumes: ${candidateStr}`);
-        }
-        assignedId = Number.isInteger(candidateNum) && String(candidateNum) === candidateStr
-          ? candidateNum
-          : candidateStr;
-        seenInBatch.add(candidateStr);
-        if (Number.isInteger(candidateNum) && candidateNum > maxNumericId) {
-          maxNumericId = candidateNum;
-        }
-      }
-    }
-
-    if (assignedId === null) {
-      maxNumericId += 1;
-      while (existingIds.has(String(maxNumericId)) || seenInBatch.has(String(maxNumericId))) {
-        maxNumericId += 1;
-      }
-      assignedId = maxNumericId;
-      seenInBatch.add(String(assignedId));
-    }
-
-    return {
-      id: assignedId,
-      name: item.name,
-      desc: item.desc,
-      price: item.price,
-      img: item.img,
-      active: item.active !== false
-    };
+function formatZodError(err) {
+  const msgs = err.issues.slice(0, 4).map((i) => {
+    const parts = [];
+    i.path.forEach((seg, idx) => {
+      if (typeof seg === 'number') return;
+      if (seg === 'perfumes' && typeof i.path[idx + 1] === 'number') parts.push(`Perfume #${i.path[idx + 1] + 1}`);
+      else parts.push(LABELS[seg] || String(seg));
+    });
+    return `${parts.join(' · ') || 'Datos'}: ${i.message}`;
   });
-
-  return {
-    branch: branch || DEFAULT_BRANCH,
-    data: {
-      settings,
-      perfumes: normalizedPerfumes
-    }
-  };
+  return 'Datos inválidos. ' + msgs.join(' | ');
 }
 
-function toPublicData(fullData) {
-  const settings = fullData && fullData.settings ? fullData.settings : {};
-  const list = Array.isArray(fullData && fullData.perfumes) ? fullData.perfumes : [];
+/* Asigna ids a los perfumes nuevos: máximo numérico existente + 1 */
+function withIds(data, rejectDuplicates) {
+  const used = new Set();
+  let max = 0;
+  for (const p of data.perfumes) {
+    if (p.id != null && /^\d{1,9}$/.test(String(p.id))) max = Math.max(max, Number(p.id));
+  }
+  const perfumes = data.perfumes.map((p) => {
+    let id = p.id;
+    if (id != null && used.has(String(id))) {
+      if (rejectDuplicates) throw new HttpError(400, `Hay IDs de perfume duplicados (${id}).`);
+      id = null;
+    }
+    if (id == null) id = ++max;
+    used.add(String(id));
+    return { id, name: p.name, desc: p.desc, price: p.price, img: p.img, active: p.active };
+  });
+  return { settings: data.settings, perfumes };
+}
 
-  const publicPerfumes = list
-    .filter((p) => p && p.active !== false)
-    .map((p) => ({
-      id: p.id,
-      name: p.name,
-      desc: p.desc,
-      price: p.price,
-      img: p.img
-    }));
-
-  return {
-    settings: {
-      brandTitle: settings.brandTitle || 'ARENAS',
-      brandSubtitle: settings.brandSubtitle || 'Perfumes Árabes & Decants',
-      shippingText: settings.shippingText || 'Delivery en Lima S/ 12.00',
-      yapeNumber: settings.yapeNumber || '',
-      whatsapp: settings.whatsapp || ''
+/* Lectura tolerante: si data.json no cumple la validación estricta, se sirve igual
+   (la tienda no debe quedar en blanco) y el panel pedirá corregirlo al guardar. */
+function normalizeStored(raw) {
+  const parsed = dataSchema.safeParse(raw);
+  if (parsed.success) return withIds(parsed.data, false);
+  if (!raw || typeof raw !== 'object' || !Array.isArray(raw.perfumes)) {
+    throw new HttpError(502, 'El data.json tiene un formato inválido.');
+  }
+  console.warn('data.json no cumple la validación estricta:', formatZodError(parsed.error));
+  return withIds(
+    {
+      settings: { ...DEFAULT_SETTINGS, ...(raw.settings || {}) },
+      perfumes: raw.perfumes
+        .filter((p) => p && typeof p === 'object')
+        .map((p) => ({
+          id: p.id ?? null,
+          name: String(p.name ?? ''),
+          desc: String(p.desc ?? ''),
+          price: Number(p.price) || 0,
+          img: String(p.img ?? ''),
+          active: p.active !== false,
+        })),
     },
-    perfumes: publicPerfumes
-  };
+    false
+  );
 }
 
-function assertGitHubConfig() {
-  if (!GITHUB_TOKEN || !GITHUB_OWNER || !GITHUB_REPO) {
-    throw new AppError(500, 'Configuración incompleta de GitHub en el servidor.');
-  }
-}
+/* ===================== GitHub (Contents API) ===================== */
+const ghUrl = `https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/contents/${FILE_PATH}`;
 
-function githubHeaders() {
-  return {
-    Authorization: `Bearer ${GITHUB_TOKEN}`,
-    Accept: 'application/vnd.github+json',
-    'X-GitHub-Api-Version': '2022-11-28',
-    'Content-Type': 'application/json',
-    'User-Agent': 'tienda-arenas-server'
-  };
-}
-
-async function fetchGitHubFile(branch) {
-  assertGitHubConfig();
-  const encodedPath = encodeURIComponent(DATA_PATH);
-  const encodedRef = encodeURIComponent(branch);
-  const url = `https://api.github.com/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${encodedPath}?ref=${encodedRef}`;
-
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: githubHeaders()
-  });
-
-  if (!response.ok) {
-    throw new AppError(502, `Error al consultar GitHub (${response.status}).`);
-  }
-
-  const json = await response.json();
-  if (!json || typeof json.content !== 'string' || typeof json.sha !== 'string') {
-    throw new AppError(502, 'Respuesta inesperada de GitHub Contents API.');
-  }
-
-  const rawText = Buffer.from(json.content, 'base64').toString('utf8');
-  let parsedData;
+async function ghFetch(url, options = {}) {
+  if (!GITHUB_TOKEN) throw new HttpError(500, 'Falta configurar GITHUB_TOKEN en el servidor.');
   try {
-    parsedData = JSON.parse(rawText);
-  } catch {
-    throw new AppError(502, 'El archivo data.json en GitHub no contiene JSON válido.');
+    return await fetch(url, {
+      ...options,
+      headers: {
+        Authorization: `Bearer ${GITHUB_TOKEN}`,
+        'User-Agent': 'arenas-tienda',
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        ...(options.headers || {}),
+      },
+      signal: AbortSignal.timeout(10000),
+    });
+  } catch (e) {
+    throw new HttpError(502, 'No se pudo conectar con GitHub. Intenta de nuevo en unos segundos.');
   }
-
-  return {
-    data: {
-      settings: parsedData.settings || {},
-      perfumes: Array.isArray(parsedData.perfumes) ? parsedData.perfumes : []
-    },
-    sha: json.sha
-  };
 }
 
-async function putGitHubFile(branch, contentObj, sha, message) {
-  assertGitHubConfig();
-  const encodedPath = encodeURIComponent(DATA_PATH);
-  const url = `https://api.github.com/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/contents/${encodedPath}`;
-  const formattedContent = `${JSON.stringify(contentObj, null, 2)}\n`;
-  const encodedContent = Buffer.from(formattedContent, 'utf8').toString('base64');
-
-  const body = {
-    message,
-    content: encodedContent,
-    branch
-  };
-  if (sha) {
-    body.sha = sha;
+function ghFail(status) {
+  if (status === 404) {
+    return new HttpError(502, `No se encontró data.json en la rama "${GITHUB_BRANCH}" de GitHub. Revisa el README (paso 1).`);
   }
+  if (status === 401 || status === 403) {
+    return new HttpError(502, 'GitHub rechazó la petición (token inválido, sin permiso "Contents: Read and write" o límite de uso).');
+  }
+  return new HttpError(502, `GitHub respondió con el error ${status}.`);
+}
 
-  const response = await fetch(url, {
+async function ghGetFile() {
+  const res = await ghFetch(`${ghUrl}?ref=${encodeURIComponent(GITHUB_BRANCH)}`);
+  if (!res.ok) throw ghFail(res.status);
+  return res.json();
+}
+
+async function loadFromGitHub() {
+  const file = await ghGetFile();
+  let raw;
+  try {
+    raw = JSON.parse(Buffer.from(file.content || '', 'base64').toString('utf8'));
+  } catch (e) {
+    throw new HttpError(502, 'El data.json de GitHub no es un JSON válido.');
+  }
+  return normalizeStored(raw);
+}
+
+async function ghWrite(data, attempt = 0) {
+  const { sha } = await ghGetFile(); // solo necesitamos el SHA actual
+  const res = await ghFetch(ghUrl, {
     method: 'PUT',
-    headers: githubHeaders(),
-    body: JSON.stringify(body)
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      message: 'Actualización desde el Panel Admin - ARENAS',
+      content: Buffer.from(JSON.stringify(data, null, 2) + '\n').toString('base64'),
+      sha,
+      branch: GITHUB_BRANCH,
+    }),
   });
-
-  return response;
+  if ((res.status === 409 || res.status === 422) && attempt === 0) return ghWrite(data, 1); // conflicto de SHA: reintenta una vez
+  if (!res.ok) throw ghFail(res.status);
 }
 
-async function saveGitHubFileWithRetry(branch, contentObj) {
-  let currentSha = null;
+/* ===================== Caché en memoria ===================== */
+let cache = { data: null, ts: 0 };
+let inflight = null;
+
+function getData(force) {
+  if (!force && cache.data && Date.now() - cache.ts < CACHE_MS) return Promise.resolve(cache.data);
+  if (!inflight) {
+    inflight = loadFromGitHub()
+      .then((d) => {
+        cache = { data: d, ts: Date.now() };
+        return d;
+      })
+      .finally(() => {
+        inflight = null;
+      });
+  }
+  return inflight;
+}
+
+/* Para la tienda: si GitHub falla, usa la última copia buena o el data.json del despliegue */
+async function getPublicData() {
   try {
-    const existing = await fetchGitHubFile(branch);
-    currentSha = existing.sha;
+    return await getData(false);
   } catch (err) {
-    if (err instanceof AppError && err.statusCode === 502) {
-      currentSha = null;
-    } else {
-      throw err;
+    console.error('Lectura de GitHub falló, se usa copia de respaldo:', err.message);
+    if (!cache.data) {
+      try {
+        const local = await fs.readFile(path.join(__dirname, FILE_PATH), 'utf8');
+        cache.data = normalizeStored(JSON.parse(local));
+      } catch (e) {
+        throw err;
+      }
     }
+    cache.ts = Date.now() - CACHE_MS + 10000; // reintenta GitHub en 10 s
+    return cache.data;
   }
-
-  const commitMsg = `Actualizar data.json (${new Date().toISOString()})`;
-  let res = await putGitHubFile(branch, contentObj, currentSha, commitMsg);
-
-  if (res.status === 409 || res.status === 422) {
-    const refreshed = await fetchGitHubFile(branch);
-    res = await putGitHubFile(branch, contentObj, refreshed.sha, commitMsg);
-  }
-
-  if (!res.ok) {
-    throw new AppError(502, `No se pudo guardar en GitHub (${res.status}).`);
-  }
-
-  const resultJson = await res.json();
-  return resultJson.content && resultJson.content.sha ? resultJson.content.sha : null;
 }
 
-async function readLocalFallbackData() {
-  const localFile = path.join(__dirname, 'data.json');
-  const raw = await fs.readFile(localFile, 'utf8');
-  const parsed = JSON.parse(raw);
-  return {
-    settings: parsed.settings || {},
-    perfumes: Array.isArray(parsed.perfumes) ? parsed.perfumes : []
-  };
+/* ===================== Sesión (cookie firmada, sin estado) ===================== */
+const sha256 = (s) => crypto.createHash('sha256').update(String(s)).digest();
+const safeEqual = (a, b) => crypto.timingSafeEqual(sha256(a), sha256(b));
+const sign = (payload) => crypto.createHmac('sha256', SESSION_SECRET).update(payload).digest('base64url');
+
+function createToken() {
+  const payload = Buffer.from(JSON.stringify({ exp: Date.now() + SESSION_MS })).toString('base64url');
+  return `${payload}.${sign(payload)}`;
 }
 
-async function getStoreData(branch, { bypassCache = false } = {}) {
-  const targetBranch = (branch || DEFAULT_BRANCH).trim() || DEFAULT_BRANCH;
-  const now = Date.now();
-  const cached = cacheStore.get(targetBranch);
-
-  if (!bypassCache && cached && cached.expiresAt > now) {
-    return cached.data;
-  }
-
+function verifyToken(token) {
+  if (!ADMIN_ENABLED || !token) return false;
+  const [payload, sig] = String(token).split('.');
+  if (!payload || !sig) return false;
+  const a = Buffer.from(sig);
+  const b = Buffer.from(sign(payload));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return false;
   try {
-    const { data } = await fetchGitHubFile(targetBranch);
-    cacheStore.set(targetBranch, { data, expiresAt: now + CACHE_TTL_MS });
-    lastGoodStore.set(targetBranch, data);
-    return data;
-  } catch (err) {
-    if (lastGoodStore.has(targetBranch)) {
-      return lastGoodStore.get(targetBranch);
-    }
-    try {
-      const localData = await readLocalFallbackData();
-      lastGoodStore.set(targetBranch, localData);
-      return localData;
-    } catch {
-      throw err;
-    }
+    const { exp } = JSON.parse(Buffer.from(payload, 'base64url').toString('utf8'));
+    return typeof exp === 'number' && exp > Date.now();
+  } catch (e) {
+    return false;
   }
 }
 
-function invalidateBranchCache(branch) {
-  const targetBranch = (branch || DEFAULT_BRANCH).trim() || DEFAULT_BRANCH;
-  cacheStore.delete(targetBranch);
+function getCookie(req, name) {
+  const header = req.headers.cookie;
+  if (!header) return null;
+  for (const part of header.split(';')) {
+    const i = part.indexOf('=');
+    if (i > 0 && part.slice(0, i).trim() === name) return part.slice(i + 1).trim();
+  }
+  return null;
 }
 
-app.use(compression());
+const cookieOpts = (req) => ({ httpOnly: true, secure: req.secure, sameSite: 'strict', path: '/' });
+
+function requireAdmin(req, res, next) {
+  if (!ADMIN_ENABLED) {
+    return next(new HttpError(503, 'El panel no está configurado (faltan ADMIN_PASSWORD o SESSION_SECRET).'));
+  }
+  if (!verifyToken(getCookie(req, COOKIE_NAME))) {
+    return next(new HttpError(401, 'Tu sesión no es válida o expiró. Ingresa de nuevo.'));
+  }
+  next();
+}
+
+/* ===================== App ===================== */
+const app = express();
+const ah = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+
+app.set('trust proxy', 1); // Render está detrás de un proxy
 
 app.use(
   helmet({
     contentSecurityPolicy: {
+      useDefaults: false,
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          "'unsafe-eval'",
-          'https://cdn.tailwindcss.com',
-          'https://unpkg.com',
-          'https://cdnjs.cloudflare.com'
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'",
-          'https://cdn.tailwindcss.com',
-          'https://cdnjs.cloudflare.com'
-        ],
-        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
-        imgSrc: ["'self'", 'https:', 'data:'],
-        connectSrc: ["'self'"],
+        baseUri: ["'self'"],
         objectSrc: ["'none'"],
-        frameAncestors: ["'none'"]
-      }
-    }
+        frameAncestors: ["'none'"],
+        formAction: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", ...CDN],
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://cdnjs.cloudflare.com'],
+        fontSrc: ["'self'", 'https://cdnjs.cloudflare.com', 'data:'],
+        imgSrc: ["'self'", 'https:', 'data:', 'blob:'],
+        connectSrc: ["'self'"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
   })
 );
-
+app.use(compression());
 app.use(express.json({ limit: '100kb' }));
+
+app.get('/healthz', (req, res) => res.type('text').send('ok'));
+
+// El panel y su API nunca se indexan ni se cachean
+app.use(['/admin', '/api/admin'], (req, res, next) => {
+  res.set('X-Robots-Tag', 'noindex, nofollow');
+  res.set('Cache-Control', 'no-store');
+  next();
+});
+
+// El panel solo se sirve en /admin; /admin.html no es accesible directo
+app.use((req, res, next) => {
+  let p;
+  try {
+    p = decodeURIComponent(req.path);
+  } catch (e) {
+    return res.status(400).type('text').send('Solicitud inválida');
+  }
+  const n = path.posix.normalize(p).toLowerCase();
+  if (n === '/admin.html' || n.startsWith('/admin.html/')) return res.status(404).type('text').send('No encontrado');
+  next();
+});
+app.use(express.static(PUBLIC_DIR, { index: 'index.html' }));
+
+app.get('/admin', (req, res) => res.sendFile(path.join(PUBLIC_DIR, 'admin.html')));
+
+/* ---------- Límites y verificación de origen ---------- */
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 120,
+  standardHeaders: 'draft-7',
+  legacyHeaders: false,
+  message: { error: 'Demasiadas peticiones. Espera un momento e intenta de nuevo.' },
+});
 
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 5,
-  standardHeaders: true,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  standardHeaders: 'draft-7',
   legacyHeaders: false,
-  handler: (_req, res) => {
-    res.status(429).json({ error: 'Demasiados intentos de inicio de sesión. Intenta en 15 minutos.' });
-  }
+  message: { error: 'Demasiados intentos fallidos. Espera 15 minutos e intenta de nuevo.' },
 });
 
-const apiLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 180,
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: (req) => req.path === '/admin/login',
-  handler: (_req, res) => {
-    res.status(429).json({ error: 'Límite de peticiones alcanzado. Intenta más tarde.' });
-  }
-});
-
-app.use('/api', apiLimiter);
-app.use('/api', verifyOrigin);
-
-app.get('/healthz', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-app.get('/api/data', async (req, res, next) => {
-  try {
-    const refParam = typeof req.query.ref === 'string' && req.query.ref.trim()
-      ? req.query.ref.trim()
-      : DEFAULT_BRANCH;
-
-    const storeData = await getStoreData(refParam);
-    const publicPayload = toPublicData(storeData);
-
-    res.set('Cache-Control', 'public, max-age=30');
-    return res.status(200).json(publicPayload);
-  } catch (err) {
-    return next(err);
-  }
-});
-
-app.post('/api/admin/login', loginLimiter, (req, res, next) => {
-  try {
-    if (!ADMIN_PASSWORD) {
-      return next(new AppError(500, 'ADMIN_PASSWORD no está configurada en el servidor.'));
+function originGuard(req, res, next) {
+  if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
+  const origin = req.get('origin');
+  if (origin) {
+    let host = null;
+    try {
+      host = new URL(origin).host;
+    } catch (e) {
+      /* origen inválido */
     }
-
-    const password = req.body && typeof req.body.password === 'string' ? req.body.password : '';
-    if (!verifyPassword(password, ADMIN_PASSWORD)) {
-      return next(new AppError(401, 'Contraseña incorrecta.'));
-    }
-
-    const exp = Date.now() + SESSION_TTL_MS;
-    const token = signSessionToken({ role: 'admin', exp });
-    setSessionCookie(req, res, token);
-
-    return res.status(200).json({ authenticated: true, expiresAt: exp });
-  } catch (err) {
-    return next(err);
+    if (host !== req.get('host')) return next(new HttpError(403, 'Origen no permitido.'));
   }
-});
+  next();
+}
+
+app.use('/api', apiLimiter, originGuard);
+
+/* ---------- API pública (la usa index.html, formato sin cambios) ---------- */
+app.get(
+  '/api/data',
+  ah(async (req, res) => {
+    const { settings, perfumes } = await getPublicData();
+    res.set('Cache-Control', 'public, max-age=30').json({
+      settings,
+      perfumes: perfumes.filter((p) => p.active !== false).map(({ active, ...rest }) => rest),
+    });
+  })
+);
+
+/* ---------- API admin ---------- */
+app.post(
+  '/api/admin/login',
+  loginLimiter,
+  ah(async (req, res) => {
+    if (!ADMIN_ENABLED) throw new HttpError(503, 'El panel no está configurado (faltan ADMIN_PASSWORD o SESSION_SECRET).');
+    const password = typeof req.body?.password === 'string' ? req.body.password : '';
+    if (!password || !safeEqual(password, ADMIN_PASSWORD)) throw new HttpError(401, 'Contraseña incorrecta.');
+    res.cookie(COOKIE_NAME, createToken(), { ...cookieOpts(req), maxAge: SESSION_MS });
+    res.json({ ok: true });
+  })
+);
 
 app.post('/api/admin/logout', (req, res) => {
-  clearSessionCookie(req, res);
-  return res.status(200).json({ authenticated: false });
+  res.clearCookie(COOKIE_NAME, cookieOpts(req));
+  res.json({ ok: true });
 });
 
 app.get('/api/admin/me', (req, res) => {
-  const session = getSessionFromReq(req);
-  if (!session) {
-    return res.status(200).json({ authenticated: false });
-  }
-  return res.status(200).json({ authenticated: true, expiresAt: session.exp });
+  res.json({ authenticated: verifyToken(getCookie(req, COOKIE_NAME)), enabled: ADMIN_ENABLED });
 });
 
-app.get('/api/admin/data', requireAdmin, async (req, res, next) => {
-  try {
-    const refParam = typeof req.query.ref === 'string' && req.query.ref.trim()
-      ? req.query.ref.trim()
-      : DEFAULT_BRANCH;
+app.get(
+  '/api/admin/data',
+  requireAdmin,
+  ah(async (req, res) => {
+    res.json(await getData(true)); // siempre fresco desde GitHub, incluye perfumes ocultos
+  })
+);
 
-    const storeData = await getStoreData(refParam, { bypassCache: true });
-    const perfumesWithActive = (Array.isArray(storeData.perfumes) ? storeData.perfumes : []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      desc: p.desc || '',
-      price: Number(p.price),
-      img: p.img,
-      active: p.active !== false
-    }));
+app.put(
+  '/api/admin/data',
+  requireAdmin,
+  ah(async (req, res) => {
+    const parsed = dataSchema.safeParse(req.body);
+    if (!parsed.success) throw new HttpError(400, formatZodError(parsed.error));
+    const data = withIds(parsed.data, true);
+    await ghWrite(data);
+    cache = { data, ts: Date.now() }; // invalida la caché con los datos recién guardados
+    res.json({ ok: true, data });
+  })
+);
 
-    return res.status(200).json({
-      branch: refParam,
-      settings: storeData.settings,
-      perfumes: perfumesWithActive
-    });
-  } catch (err) {
-    return next(err);
+/* ---------- 404 y errores ---------- */
+app.use('/api', (req, res) => res.status(404).json({ error: 'Ruta no encontrada.' }));
+app.use((req, res) => res.status(404).type('text').send('No encontrado'));
+
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  let status = 500;
+  let message = 'Error interno del servidor.';
+  if (err instanceof HttpError) {
+    status = err.status;
+    message = err.message;
+  } else if (err.type === 'entity.parse.failed') {
+    status = 400;
+    message = 'El cuerpo de la petición no es un JSON válido.';
+  } else if (err.type === 'entity.too.large') {
+    status = 413;
+    message = 'La petición es demasiado grande (máximo 100 kb).';
+  } else {
+    console.error('Error no controlado:', err.message);
   }
-});
-
-app.put('/api/admin/data', requireAdmin, async (req, res, next) => {
-  try {
-    const requestedBranch = req.body && typeof req.body.branch === 'string' && req.body.branch.trim()
-      ? req.body.branch.trim()
-      : DEFAULT_BRANCH;
-
-    let currentPerfumes = [];
-    try {
-      const current = await getStoreData(requestedBranch, { bypassCache: true });
-      currentPerfumes = Array.isArray(current.perfumes) ? current.perfumes : [];
-    } catch {
-      currentPerfumes = [];
-    }
-
-    const { branch, data } = normalizeAndValidateAdminPayload(req.body, currentPerfumes);
-    await saveGitHubFileWithRetry(branch, data);
-
-    invalidateBranchCache(branch);
-    lastGoodStore.set(branch, data);
-
-    return res.status(200).json({
-      ok: true,
-      branch,
-      settings: data.settings,
-      perfumes: data.perfumes
-    });
-  } catch (err) {
-    return next(err);
-  }
-});
-
-app.get(['/admin', '/admin/'], (_req, res, next) => {
-  res.set('X-Robots-Tag', 'noindex, nofollow');
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'), (err) => {
-    if (err) next(new AppError(404, 'Panel no encontrado.'));
-  });
-});
-
-app.use((req, res, next) => {
-  if (req.path.toLowerCase() === '/admin.html') {
-    return res.status(404).json({ error: 'Recurso no encontrado.' });
-  }
-  return next();
-});
-
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use((req, res, _next) => {
-  if (req.path.startsWith('/api/')) {
-    return res.status(404).json({ error: 'Endpoint no encontrado.' });
-  }
-  return res.status(404).sendFile(path.join(__dirname, 'public', 'index.html'), () => {
-    res.status(404).json({ error: 'Página no encontrada.' });
-  });
-});
-
-app.use((err, _req, res, _next) => {
-  const status = err && err.expose && typeof err.statusCode === 'number' ? err.statusCode : 500;
-  const message = err && err.expose && err.message
-    ? err.message
-    : 'Error interno del servidor.';
-
-  if (status >= 500) {
-    console.error(`[ERROR ${status}]: ${err && err.message ? err.message : 'Error desconocido'}`);
-  }
-
-  return res.status(status).json({ error: message });
+  res.status(status).json({ error: message });
 });
 
 app.listen(PORT, () => {
-  console.log(`Servidor ARENAS escuchando en puerto ${PORT}`);
+  console.log(`Servidor ARENAS en el puerto ${PORT} (datos: ${GITHUB_OWNER}/${GITHUB_REPO}@${GITHUB_BRANCH})`);
+  if (!ADMIN_ENABLED) console.warn('Panel admin desactivado: define ADMIN_PASSWORD (10+ caracteres) y SESSION_SECRET (32+ caracteres).');
+  if (!GITHUB_TOKEN) console.warn('Falta GITHUB_TOKEN: la tienda usará el data.json local y no se podrá guardar.');
 });
