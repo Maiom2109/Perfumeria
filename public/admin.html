@@ -26,7 +26,6 @@
     <script type="text/babel">
         const { useState, useEffect, useMemo, useCallback, useRef } = React;
 
-        /* ---------- Constantes y utilidades ---------- */
         const RE_YAPE = /^9\d{8}$/;
         const RE_WA = /^51\d{9}$/;
         let keySeq = 0;
@@ -60,7 +59,6 @@
 
         function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
 
-        /* Redimensiona y optimiza la imagen del QR a PNG/JPEG ligero (< 120 KB) */
         function compressQrImage(file) {
             return new Promise((resolve, reject) => {
                 if (!file || !file.type.startsWith('image/')) {
@@ -206,7 +204,6 @@
         });
         const snap = (d) => JSON.stringify(strip(d));
 
-        /* ---------- Componentes base ---------- */
         function Field({ label, hint, error, children }) {
             return (
                 <label className="block">
@@ -420,7 +417,6 @@
 
             return (
                 <div className="space-y-4">
-                    {/* Identidad y Portada */}
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
                         <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-store"></i>Marca y portada principal</h2>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -447,7 +443,6 @@
                         </div>
                     </section>
 
-                    {/* Envíos Lima y Provincia */}
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
                         <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-truck"></i>Envíos a Lima y Provincia</h2>
 
@@ -507,7 +502,6 @@
                         </div>
                     </section>
 
-                    {/* Pagos, QR de Yape (por imagen) y Separación */}
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
                         <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-qrcode"></i>Pagos, QR de Yape y Separación</h2>
 
@@ -591,7 +585,6 @@
             );
         }
 
-        /* ---------- App ---------- */
         function App() {
             const [phase, setPhase] = useState('boot');
             const [enabled, setEnabled] = useState(true);
