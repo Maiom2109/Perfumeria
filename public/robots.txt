@@ -1,5 +1,6 @@
 User-agent: *
 Allow: /
 Disallow: /admin
+Disallow: /api/admin
 
 Sitemap: https://tienda-arenas.onrender.com/sitemap.xml
