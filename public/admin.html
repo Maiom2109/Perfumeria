@@ -59,6 +59,13 @@
 
         function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
 
+        const isValidImgVal = (u) => {
+            const v = String(u || '').trim();
+            if (!v) return false;
+            if (v.startsWith('data:image/')) return v.length <= 240000;
+            return v.length <= 500 && isHttps(v);
+        };
+
         function compressUploadedImage(file, options) {
             const maxSide = (options && options.maxSide) || 440;
             const fillWhite = Boolean(options && options.fillWhite);
@@ -150,8 +157,7 @@
             if (!/^\d+$/.test(ps) || Number(ps) > 5000) e.price = 'Número entero entre 0 y 5000';
             const img = f.img.trim();
             if (!img) e.img = 'Es obligatoria';
-            else if (img.length > 500) e.img = 'Máximo 500 caracteres';
-            else if (!isHttps(img)) e.img = 'Debe empezar con https://';
+            else if (!isValidImgVal(img)) e.img = img.startsWith('data:image/') ? 'La imagen es demasiado pesada' : 'Sube una foto o pega una URL https://';
             return e;
         }
 
@@ -330,11 +336,34 @@
             const [f, setF] = useState({ name: initial.name, desc: initial.desc, price: String(initial.price), img: initial.img, active: initial.active });
             const [touched, setTouched] = useState(false);
             const [imgBad, setImgBad] = useState(false);
+            const [imgBusy, setImgBusy] = useState(false);
+            const [uploadErr, setUploadErr] = useState('');
+            const fileRef = useRef(null);
+
             const all = validatePerfume(f);
             const e = touched ? all : {};
             const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
             const url = f.img.trim();
+            const isLocal = url.startsWith('data:image/');
+
             useEffect(() => { setImgBad(false); }, [url]);
+
+            const handlePhotoUpload = async (ev) => {
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                setImgBusy(true);
+                setUploadErr('');
+                try {
+                    const dataUrl = await compressUploadedImage(file, { maxSide: 640, fillWhite: true });
+                    set('img', dataUrl);
+                } catch (err) {
+                    setUploadErr(err.message);
+                } finally {
+                    setImgBusy(false);
+                    ev.target.value = '';
+                }
+            };
+
             const submit = (ev) => {
                 ev.preventDefault();
                 setTouched(true);
@@ -358,20 +387,73 @@
                         <Field label="Precio en soles (S/)" error={e.price}>
                             <input className={inp(e.price)} inputMode="numeric" value={f.price} onChange={(ev) => set('price', ev.target.value.replace(/\D/g, ''))} placeholder="Ej. 135" />
                         </Field>
-                        <div className="flex gap-3 items-start">
-                            <div className="w-24 h-24 rounded-xl border border-zinc-800 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
-                                {isHttps(url) && !imgBad
-                                    ? <img src={url} alt="Vista previa" className="w-full h-full object-cover" onError={() => setImgBad(true)} />
-                                    : <i className="fas fa-image text-2xl"></i>}
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 space-y-3">
+                            <span className="block text-xs text-zinc-300 font-bold">Foto del perfume (subir foto o pegar URL)</span>
+                            <div className="flex gap-3.5 items-center">
+                                <div className="w-24 h-24 rounded-xl border border-zinc-700 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
+                                    {isValidImgVal(url) && !imgBad
+                                        ? <img src={url} alt="Vista previa" className="w-full h-full object-cover" onError={() => setImgBad(true)} />
+                                        : <i className="fas fa-camera text-2xl"></i>}
+                                </div>
+                                <div className="space-y-2 flex-grow min-w-0">
+                                    <input
+                                        ref={fileRef}
+                                        type="file"
+                                        accept="image/*"
+                                        className="hidden"
+                                        onChange={handlePhotoUpload}
+                                    />
+                                    <div className="flex flex-wrap gap-2">
+                                        <button
+                                            type="button"
+                                            disabled={imgBusy}
+                                            onClick={() => fileRef.current && fileRef.current.click()}
+                                            className={btnPrimary + ' !py-2 !px-3'}
+                                        >
+                                            <i className={'fas ' + (imgBusy ? 'fa-spinner fa-spin' : 'fa-camera')}></i>
+                                            {imgBusy ? 'Optimizando...' : 'Subir foto / Cámara'}
+                                        </button>
+                                        {url && (
+                                            <button
+                                                type="button"
+                                                onClick={() => set('img', '')}
+                                                className={btnGhost + ' !py-2 !px-3'}
+                                            >
+                                                Quitar
+                                            </button>
+                                        )}
+                                    </div>
+                                    <p className="text-[11px] text-zinc-400 leading-snug">
+                                        {isLocal
+                                            ? 'Foto local optimizada y lista para guardar.'
+                                            : 'Toma una foto con tu celular, elige de tu galería o pega un enlace abajo.'}
+                                    </p>
+                                </div>
                             </div>
-                            <div className="flex-grow min-w-0">
-                                <Field label="URL de la imagen" error={e.img}>
-                                    <input className={inp(e.img)} value={f.img} onChange={(ev) => set('img', ev.target.value)} placeholder="https://..." />
-                                </Field>
-                            </div>
+
+                            {!isLocal && (
+                                <input
+                                    className={inp(e.img)}
+                                    value={f.img}
+                                    onChange={(ev) => set('img', ev.target.value)}
+                                    placeholder="O pega una URL https://..."
+                                />
+                            )}
+
+                            {(uploadErr || e.img) && (
+                                <p className="text-white text-xs font-semibold">
+                                    <i className="fas fa-circle-exclamation mr-1"></i>{uploadErr || e.img}
+                                </p>
+                            )}
+                            {!isLocal && isHttps(url) && imgBad && (
+                                <p className="text-xs text-white"><i className="fas fa-triangle-exclamation mr-1.5"></i>No se pudo cargar la imagen con esa URL.</p>
+                            )}
+                            {!isLocal && /(gstatic|google)\./i.test(url) && (
+                                <p className="text-xs text-zinc-300"><i className="fas fa-triangle-exclamation mr-1.5"></i>Las imágenes de Google (gstatic) pueden dejar de funcionar sin aviso.</p>
+                            )}
                         </div>
-                        {isHttps(url) && imgBad && <p className="text-xs text-white"><i className="fas fa-triangle-exclamation mr-1.5"></i>No se pudo cargar la imagen con esa URL.</p>}
-                        {/(gstatic|google)\./i.test(url) && <p className="text-xs text-zinc-300"><i className="fas fa-triangle-exclamation mr-1.5"></i>Las imágenes de Google (gstatic) pueden dejar de funcionar sin aviso.</p>}
+
                         <label className="flex items-center gap-3 cursor-pointer">
                             <input type="checkbox" className="w-5 h-5 accent-white" checked={f.active} onChange={(ev) => set('active', ev.target.checked)} />
                             <span className="text-sm text-zinc-200">Visible en la tienda</span>
@@ -479,11 +561,11 @@
                                 <div className="w-24 h-24 rounded-full border border-zinc-700 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-500">
                                     {logoVal && !logoBad
                                         ? <img src={logoVal} alt="Logo de la tienda" className="w-full h-full object-contain p-1.5" onError={() => setLogoBad(true)} />
-                                        : <i className="fas fa-circle-dot text-3xl" title="Isotipo por defecto"></i>}
+                                        : <i className="fas fa-circle-dot text-3xl" title="Sin logo"></i>}
                                 </div>
                                 <div className="space-y-2.5 flex-grow">
                                     <p className="text-xs text-zinc-400 leading-relaxed">
-                                        Sube el logo de tu marca (PNG transparente o JPG). Aparecerá en la animación inicial, barra superior y pie de página. Si lo quitas, se usará el isotipo minimalista por defecto.
+                                        Sube el logo de tu marca (PNG transparente o JPG). Aparecerá en la animación inicial, barra superior y pie de página.
                                     </p>
                                     <div className="flex flex-wrap gap-2">
                                         <input
@@ -508,7 +590,7 @@
                                                 onClick={() => onChange('brandLogoImg', '')}
                                                 className={btnGhost + ' !py-2.5'}
                                             >
-                                                <i className="fas fa-rotate-left"></i>Usar logo por defecto
+                                                <i className="fas fa-trash-can"></i>Quitar logo
                                             </button>
                                         )}
                                     </div>
