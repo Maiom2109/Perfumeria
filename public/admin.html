@@ -59,7 +59,9 @@
 
         function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
 
-        function compressQrImage(file) {
+        function compressUploadedImage(file, options) {
+            const maxSide = (options && options.maxSide) || 440;
+            const fillWhite = Boolean(options && options.fillWhite);
             return new Promise((resolve, reject) => {
                 if (!file || !file.type.startsWith('image/')) {
                     return reject(new Error('Selecciona un archivo de imagen válido (PNG, JPG o WEBP).'));
@@ -70,7 +72,6 @@
                     const img = new Image();
                     img.onerror = () => reject(new Error('El archivo no es una imagen válida.'));
                     img.onload = () => {
-                        const maxSide = 440;
                         const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
                         const w = Math.max(1, Math.round(img.width * scale));
                         const h = Math.max(1, Math.round(img.height * scale));
@@ -78,19 +79,21 @@
                         canvas.width = w;
                         canvas.height = h;
                         const ctx = canvas.getContext('2d');
-                        ctx.fillStyle = '#ffffff';
-                        ctx.fillRect(0, 0, w, h);
+                        if (fillWhite) {
+                            ctx.fillStyle = '#ffffff';
+                            ctx.fillRect(0, 0, w, h);
+                        }
                         ctx.drawImage(img, 0, 0, w, h);
 
-                        let dataUrl = canvas.toDataURL('image/webp', 0.88);
+                        let dataUrl = canvas.toDataURL('image/webp', 0.9);
                         if (!dataUrl.startsWith('data:image/webp')) {
-                            dataUrl = canvas.toDataURL('image/jpeg', 0.88);
+                            dataUrl = canvas.toDataURL(fillWhite ? 'image/jpeg' : 'image/png', 0.88);
                         }
                         if (dataUrl.length > 240000) {
-                            dataUrl = canvas.toDataURL('image/jpeg', 0.72);
+                            dataUrl = canvas.toDataURL('image/jpeg', 0.75);
                         }
                         if (dataUrl.length > 240000) {
-                            return reject(new Error('La imagen del QR sigue siendo muy pesada. Recórtala un poco más.'));
+                            return reject(new Error('La imagen sigue siendo muy pesada. Recórtala un poco más.'));
                         }
                         resolve(dataUrl);
                     };
@@ -109,19 +112,25 @@
             };
             text('brandTitle', 40);
             text('brandSubtitle', 60);
+            text('splashSubtitle', 50);
             text('heroTitle', 90);
             text('heroSubtitle', 180);
             text('heroCtaText', 30);
             text('shippingText', 80);
             text('provinceShippingText', 100);
 
+            if (String(s.brandTabs || '').length > 250) e.brandTabs = 'Máximo 250 caracteres';
             if (!RE_YAPE.test(String(s.yapeNumber || '').trim())) e.yapeNumber = 'Debe tener 9 dígitos y empezar con 9';
             if (!RE_WA.test(String(s.whatsapp || '').trim())) e.whatsapp = 'Debe ser 51 + 9 dígitos (ej. 51912345678)';
 
-            const qr = String(s.yapeQrImg || '').trim();
-            if (qr && !qr.startsWith('data:image/') && (!isHttps(qr) || qr.length > 500)) {
-                e.yapeQrImg = 'Imagen QR inválida';
-            }
+            const checkImg = (k, label) => {
+                const val = String(s[k] || '').trim();
+                if (val && !val.startsWith('data:image/') && (!isHttps(val) || val.length > 500)) {
+                    e[k] = label + ' inválido';
+                }
+            };
+            checkImg('yapeQrImg', 'Imagen QR');
+            checkImg('brandLogoImg', 'Logo');
 
             const limaCost = String(s.limaShippingCost ?? '').trim();
             if (!/^\d+$/.test(limaCost) || Number(limaCost) > 200) e.limaShippingCost = 'Entero entre 0 y 200';
@@ -154,9 +163,12 @@
                 settings: {
                     brandTitle: String(s.brandTitle ?? 'ARENAS'),
                     brandSubtitle: String(s.brandSubtitle ?? 'Perfumes Árabes & Decants'),
+                    splashSubtitle: String(s.splashSubtitle ?? 'perfumería árabe'),
+                    brandLogoImg: String(s.brandLogoImg ?? ''),
                     heroTitle: String(s.heroTitle ?? 'Perfumes árabes originales y decants en Lima'),
                     heroSubtitle: String(s.heroSubtitle ?? 'Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.'),
                     heroCtaText: String(s.heroCtaText ?? 'Ver colección'),
+                    brandTabs: String(s.brandTabs ?? 'Lattafa, Rasasi, Afnan, Armaf, Al Haramain'),
                     shippingText: String(s.shippingText ?? 'Delivery en Lima S/ 12.00'),
                     whatsapp: String(s.whatsapp ?? ''),
                     yapeNumber: String(s.yapeNumber ?? ''),
@@ -168,6 +180,14 @@
                     provinceShippingText: String(s.provinceShippingText ?? 'Envío a provincia (pago en destino al recibir)'),
                     reservationEnabled: s.reservationEnabled !== false,
                     reservationPerItem: Number.isFinite(Number(s.reservationPerItem)) ? Math.max(1, Math.round(Number(s.reservationPerItem))) : 20,
+                    faq1Q: String(s.faq1Q ?? '¿Los perfumes árabes son 100% originales?'),
+                    faq1A: String(s.faq1A ?? 'Sí, trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía.'),
+                    faq2Q: String(s.faq2Q ?? '¿Cómo se realizan los pagos?'),
+                    faq2A: String(s.faq2A ?? 'Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda o escaneando nuestro QR.'),
+                    faq3Q: String(s.faq3Q ?? '¿Cómo funcionan los envíos a Lima y Provincia?'),
+                    faq3A: String(s.faq3A ?? 'Realizamos entregas en Lima y envíos a todo el Perú por agencia (Shalom / Olva) con pago en destino.'),
+                    faq4Q: String(s.faq4Q ?? '¿Puedo separar un perfume con adelanto?'),
+                    faq4A: String(s.faq4A ?? 'Sí, puedes separar cada perfume con el monto indicado en la boleta y cancelar la diferencia al momento de la entrega o antes del despacho.'),
                 },
                 perfumes: ((d && d.perfumes) || []).map((p) => ({
                     _key: nk(),
@@ -185,9 +205,12 @@
             settings: {
                 brandTitle: d.settings.brandTitle.trim(),
                 brandSubtitle: d.settings.brandSubtitle.trim(),
+                splashSubtitle: d.settings.splashSubtitle.trim(),
+                brandLogoImg: d.settings.brandLogoImg.trim(),
                 heroTitle: d.settings.heroTitle.trim(),
                 heroSubtitle: d.settings.heroSubtitle.trim(),
                 heroCtaText: d.settings.heroCtaText.trim(),
+                brandTabs: d.settings.brandTabs.trim(),
                 shippingText: d.settings.shippingText.trim(),
                 whatsapp: d.settings.whatsapp.trim(),
                 yapeNumber: d.settings.yapeNumber.trim(),
@@ -199,6 +222,14 @@
                 provinceShippingText: d.settings.provinceShippingText.trim(),
                 reservationEnabled: Boolean(d.settings.reservationEnabled),
                 reservationPerItem: Number(d.settings.reservationPerItem) || 20,
+                faq1Q: d.settings.faq1Q.trim(),
+                faq1A: d.settings.faq1A.trim(),
+                faq2Q: d.settings.faq2Q.trim(),
+                faq2A: d.settings.faq2A.trim(),
+                faq3Q: d.settings.faq3Q.trim(),
+                faq3A: d.settings.faq3A.trim(),
+                faq4Q: d.settings.faq4Q.trim(),
+                faq4A: d.settings.faq4A.trim(),
             },
             perfumes: d.perfumes.map((p) => ({ id: p.id ?? null, name: p.name.trim(), desc: p.desc.trim(), price: p.price, img: p.img.trim(), active: p.active })),
         });
@@ -395,16 +426,38 @@
             const errs = validateSettings(s);
             const [qrBad, setQrBad] = useState(false);
             const [qrBusy, setQrBusy] = useState(false);
+            const [logoBad, setLogoBad] = useState(false);
+            const [logoBusy, setLogoBusy] = useState(false);
             const qrFileRef = useRef(null);
+            const logoFileRef = useRef(null);
+
             const qrVal = String(s.yapeQrImg || '').trim();
+            const logoVal = String(s.brandLogoImg || '').trim();
             useEffect(() => { setQrBad(false); }, [qrVal]);
+            useEffect(() => { setLogoBad(false); }, [logoVal]);
+
+            const handleLogoUpload = async (ev) => {
+                const file = ev.target.files && ev.target.files[0];
+                if (!file) return;
+                setLogoBusy(true);
+                try {
+                    const dataUrl = await compressUploadedImage(file, { maxSide: 320, fillWhite: false });
+                    onChange('brandLogoImg', dataUrl);
+                    onToast('Logo cargado. Pulsa «Guardar cambios» para publicarlo.');
+                } catch (err) {
+                    onToast(err.message, 'err');
+                } finally {
+                    setLogoBusy(false);
+                    ev.target.value = '';
+                }
+            };
 
             const handleQrUpload = async (ev) => {
                 const file = ev.target.files && ev.target.files[0];
                 if (!file) return;
                 setQrBusy(true);
                 try {
-                    const dataUrl = await compressQrImage(file);
+                    const dataUrl = await compressUploadedImage(file, { maxSide: 440, fillWhite: true });
                     onChange('yapeQrImg', dataUrl);
                     onToast('Imagen QR cargada. Pulsa «Guardar cambios» para publicarla.');
                 } catch (err) {
@@ -418,15 +471,67 @@
             return (
                 <div className="space-y-4">
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
-                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-store"></i>Marca y portada principal</h2>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-crown"></i>Logo e Identidad de Marca</h2>
+
+                        <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-4">
+                            <span className="block text-xs text-zinc-300 font-bold mb-2">Logo de la tienda (Intro, Cabecera y Pie de página)</span>
+                            <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center">
+                                <div className="w-24 h-24 rounded-full border border-zinc-700 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-500">
+                                    {logoVal && !logoBad
+                                        ? <img src={logoVal} alt="Logo de la tienda" className="w-full h-full object-contain p-1.5" onError={() => setLogoBad(true)} />
+                                        : <i className="fas fa-circle-dot text-3xl" title="Isotipo por defecto"></i>}
+                                </div>
+                                <div className="space-y-2.5 flex-grow">
+                                    <p className="text-xs text-zinc-400 leading-relaxed">
+                                        Sube el logo de tu marca (PNG transparente o JPG). Aparecerá en la animación inicial, barra superior y pie de página. Si lo quitas, se usará el isotipo minimalista por defecto.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        <input
+                                            ref={logoFileRef}
+                                            type="file"
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={handleLogoUpload}
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={logoBusy}
+                                            onClick={() => logoFileRef.current && logoFileRef.current.click()}
+                                            className={btnPrimary + ' !py-2.5'}
+                                        >
+                                            <i className={'fas ' + (logoBusy ? 'fa-spinner fa-spin' : 'fa-upload')}></i>
+                                            {logoVal ? 'Cambiar logo' : 'Subir logo'}
+                                        </button>
+                                        {logoVal && (
+                                            <button
+                                                type="button"
+                                                onClick={() => onChange('brandLogoImg', '')}
+                                                className={btnGhost + ' !py-2.5'}
+                                            >
+                                                <i className="fas fa-rotate-left"></i>Usar logo por defecto
+                                            </button>
+                                        )}
+                                    </div>
+                                    {errs.brandLogoImg && <p className="text-xs text-white font-semibold">{errs.brandLogoImg}</p>}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <Field label="Nombre de la tienda" error={errs.brandTitle}>
                                 <input className={inp(errs.brandTitle)} value={s.brandTitle} onChange={(e) => onChange('brandTitle', e.target.value)} />
                             </Field>
                             <Field label="Subtítulo de marca" error={errs.brandSubtitle}>
                                 <input className={inp(errs.brandSubtitle)} value={s.brandSubtitle} onChange={(e) => onChange('brandSubtitle', e.target.value)} />
                             </Field>
+                            <Field label="Subtítulo animación inicial" error={errs.splashSubtitle}>
+                                <input className={inp(errs.splashSubtitle)} value={s.splashSubtitle} onChange={(e) => onChange('splashSubtitle', e.target.value)} />
+                            </Field>
                         </div>
+                    </section>
+
+                    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-store"></i>Portada y Filtros de Catálogo</h2>
                         <Field label="Título principal (Hero)" error={errs.heroTitle}>
                             <input className={inp(errs.heroTitle)} value={s.heroTitle} onChange={(e) => onChange('heroTitle', e.target.value)} />
                         </Field>
@@ -441,6 +546,9 @@
                                 <input className={inp(errs.shippingText)} value={s.shippingText} onChange={(e) => onChange('shippingText', e.target.value)} />
                             </Field>
                         </div>
+                        <Field label="Pestañas de marcas en catálogo" error={errs.brandTabs} hint="Separa cada marca con coma (ej. Lattafa, Rasasi, Afnan, Armaf, Al Haramain).">
+                            <input className={inp(errs.brandTabs)} value={s.brandTabs} onChange={(e) => onChange('brandTabs', e.target.value)} />
+                        </Field>
                     </section>
 
                     <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
@@ -580,6 +688,20 @@
                                 </div>
                             )}
                         </div>
+                    </section>
+
+                    <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                        <h2 className="text-base font-extrabold flex items-center gap-2"><i className="fas fa-circle-question"></i>Preguntas Frecuentes (FAQ)</h2>
+                        {[1, 2, 3, 4].map((num) => (
+                            <div key={num} className="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 space-y-2.5">
+                                <Field label={'Pregunta #' + num}>
+                                    <input className={inp(false)} value={s['faq' + num + 'Q']} onChange={(e) => onChange('faq' + num + 'Q', e.target.value)} />
+                                </Field>
+                                <Field label={'Respuesta #' + num}>
+                                    <textarea rows="2" className={inp(false)} value={s['faq' + num + 'A']} onChange={(e) => onChange('faq' + num + 'A', e.target.value)} />
+                                </Field>
+                            </div>
+                        ))}
                     </section>
                 </div>
             );
@@ -741,7 +863,7 @@
                     <header className="sticky top-0 z-30 bg-black border-b border-zinc-800">
                         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
                             <div>
-                                <h1 className="text-xl font-black tracking-[0.2em] text-white leading-none">ARENAS</h1>
+                                <h1 className="text-xl font-black tracking-[0.2em] text-white leading-none">{draft.settings.brandTitle || 'ARENAS'}</h1>
                                 <p className="text-[11px] text-zinc-400 mt-1">Panel de administración · {activeCount}/{draft.perfumes.length} visibles</p>
                             </div>
                             <div className="flex gap-2">
