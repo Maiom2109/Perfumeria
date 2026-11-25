@@ -1,7 +1,7 @@
 {
-  "name": "tienda-arenas",
-  "version": "1.0.0",
-  "description": "Tienda de perfumes árabes y decants ARENAS en Lima, Perú",
+  "name": "perfumeria",
+  "version": "2.0.0",
+  "description": "Tienda de Perfumes Arenas",
   "main": "server.js",
   "engines": {
     "node": ">=18"
@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "compression": "^1.7.4",
-    "express": "^4.21.1",
-    "express-rate-limit": "^7.4.1",
-    "helmet": "^8.0.0",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "helmet": "^7.1.0",
     "zod": "^3.23.8"
   }
 }
