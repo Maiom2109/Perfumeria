@@ -1,923 +1,505 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="robots" content="noindex, nofollow" />
-  <title>Administración | ARENAS</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
-  <script src="https://unpkg.com/@babel/standalone/babel.min.js" crossorigin></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
-  <style>
-    html, body {
-      background-color: #09090b;
-      color: #ffffff;
-      font-family: Arial, Helvetica, sans-serif;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>Panel de Administración - ARENAS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone@7.24.7/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        html, body { background: #09090b; color: #f4f4f5; font-family: Arial, Helvetica, sans-serif; overflow-x: hidden; }
+        @keyframes pop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+        .pop { animation: pop .22s ease both; }
+        .btn { transition: transform .15s ease, background-color .2s ease; }
+        .btn:active:not(:disabled) { transform: scale(.97); }
+        :focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+        @media (prefers-reduced-motion: reduce) { .pop, .btn { animation: none; transition: none; } }
+    </style>
 </head>
-<body class="bg-zinc-950 text-white min-h-screen">
-  <div id="root"></div>
+<body>
+    <div id="root"></div>
 
-  <script type="text/babel">
-    const { useState, useEffect, useMemo } = React;
+    <script type="text/babel">
+        const { useState, useEffect, useMemo, useCallback } = React;
 
-    const EMPTY_SETTINGS = {
-      brandTitle: '',
-      brandSubtitle: '',
-      shippingText: '',
-      yapeNumber: '',
-      whatsapp: ''
-    };
+        /* ---------- Constantes y utilidades ---------- */
+        const SKEYS = ['brandTitle', 'brandSubtitle', 'shippingText', 'whatsapp', 'yapeNumber'];
+        const RE_YAPE = /^9\d{8}$/;
+        const RE_WA = /^51\d{9}$/;
+        let keySeq = 0;
+        let toastSeq = 0;
+        const nk = () => 'k' + (++keySeq);
 
-    const EMPTY_FORM = {
-      id: null,
-      name: '',
-      desc: '',
-      price: '0',
-      img: '',
-      active: true
-    };
+        const inp = (err) => 'w-full bg-black border ' + (err ? 'border-white' : 'border-zinc-700') + ' text-white placeholder-zinc-500 px-3 py-2.5 rounded-xl text-sm focus:outline-none focus:border-white';
+        const BTN = 'btn font-bold text-xs rounded-xl px-4 py-3 disabled:opacity-40 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2 ';
+        const btnPrimary = BTN + 'bg-white hover:bg-zinc-200 text-zinc-950';
+        const btnGhost = BTN + 'bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-100';
+        const btnOutline = BTN + 'border border-white text-white hover:bg-white hover:text-zinc-950';
+        const iconBtn = 'btn w-9 h-9 rounded-lg bg-zinc-800 border border-zinc-700 hover:bg-zinc-700 text-sm text-zinc-100 disabled:opacity-30 disabled:cursor-not-allowed';
 
-    function isGoogleImageUrl(url) {
-      const clean = String(url || '').toLowerCase();
-      return clean.includes('google.') || clean.includes('gstatic.');
-    }
-
-    function isValidHttpsUrl(url) {
-      const clean = String(url || '').trim();
-      if (!clean || clean.length > 500) return false;
-      try {
-        const parsed = new URL(clean);
-        return parsed.protocol === 'https:';
-      } catch {
-        return false;
-      }
-    }
-
-    function validateSettingsForm(settings) {
-      const errors = {};
-      const title = (settings.brandTitle || '').trim();
-      const subtitle = (settings.brandSubtitle || '').trim();
-      const shipping = (settings.shippingText || '').trim();
-      const yape = (settings.yapeNumber || '').trim();
-      const whatsapp = (settings.whatsapp || '').trim();
-
-      if (title.length < 1 || title.length > 40) {
-        errors.brandTitle = 'Debe tener entre 1 y 40 caracteres.';
-      }
-      if (subtitle.length < 1 || subtitle.length > 60) {
-        errors.brandSubtitle = 'Debe tener entre 1 y 60 caracteres.';
-      }
-      if (shipping.length < 1 || shipping.length > 80) {
-        errors.shippingText = 'Debe tener entre 1 y 80 caracteres.';
-      }
-      if (!/^9\d{8}$/.test(yape)) {
-        errors.yapeNumber = 'Debe tener 9 dígitos y empezar con 9.';
-      }
-      if (!/^51\d{9}$/.test(whatsapp)) {
-        errors.whatsapp = 'Debe empezar con 51 y tener 11 dígitos en total.';
-      }
-      return errors;
-    }
-
-    function AdminApp() {
-      const [checkingSession, setCheckingSession] = useState(true);
-      const [authenticated, setAuthenticated] = useState(false);
-
-      const [passwordInput, setPasswordInput] = useState('');
-      const [loginError, setLoginError] = useState('');
-      const [loggingIn, setLoggingIn] = useState(false);
-
-      const [loadingData, setLoadingData] = useState(false);
-      const [saving, setSaving] = useState(false);
-      const [dirty, setDirty] = useState(false);
-      const [toast, setToast] = useState(null);
-
-      const [settings, setSettings] = useState(EMPTY_SETTINGS);
-      const [perfumes, setPerfumes] = useState([]);
-      const [searchQuery, setSearchQuery] = useState('');
-
-      const [modalOpen, setModalOpen] = useState(false);
-      const [formState, setFormState] = useState(EMPTY_FORM);
-      const [formError, setFormError] = useState('');
-
-      const [deleteTarget, setDeleteTarget] = useState(null);
-
-      function showToast(message) {
-        setToast(message);
-      }
-
-      useEffect(() => {
-        if (!toast) return;
-        const timer = setTimeout(() => setToast(null), 3200);
-        return () => clearTimeout(timer);
-      }, [toast]);
-
-      useEffect(() => {
-        function handleBeforeUnload(e) {
-          if (!dirty) return;
-          e.preventDefault();
-          e.returnValue = '';
-        }
-        window.addEventListener('beforeunload', handleBeforeUnload);
-        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-      }, [dirty]);
-
-      async function loadAdminData() {
-        setLoadingData(true);
-        try {
-          const res = await fetch('/api/admin/data', { credentials: 'include' });
-          const body = await res.json();
-          if (!res.ok) {
-            throw new Error(body.error || 'No se pudieron cargar los datos.');
-          }
-          setSettings({
-            brandTitle: body.settings && body.settings.brandTitle ? body.settings.brandTitle : '',
-            brandSubtitle: body.settings && body.settings.brandSubtitle ? body.settings.brandSubtitle : '',
-            shippingText: body.settings && body.settings.shippingText ? body.settings.shippingText : '',
-            yapeNumber: body.settings && body.settings.yapeNumber ? body.settings.yapeNumber : '',
-            whatsapp: body.settings && body.settings.whatsapp ? body.settings.whatsapp : ''
-          });
-          setPerfumes(
-            Array.isArray(body.perfumes)
-              ? body.perfumes.map((p) => ({
-                  id: p.id,
-                  name: p.name || '',
-                  desc: p.desc || '',
-                  price: Number.isInteger(Number(p.price)) ? Number(p.price) : 0,
-                  img: p.img || '',
-                  active: p.active !== false
-                }))
-              : []
-          );
-          setDirty(false);
-        } catch (err) {
-          showToast(err.message || 'Error al cargar datos.');
-        } finally {
-          setLoadingData(false);
-        }
-      }
-
-      useEffect(() => {
-        let active = true;
-        fetch('/api/admin/me', { credentials: 'include' })
-          .then((r) => r.json())
-          .then((data) => {
-            if (!active) return;
-            if (data && data.authenticated) {
-              setAuthenticated(true);
-              loadAdminData();
-            } else {
-              setAuthenticated(false);
+        async function api(method, url, body) {
+            let res;
+            try {
+                res = await fetch(url, {
+                    method,
+                    credentials: 'same-origin',
+                    headers: body ? { 'Content-Type': 'application/json' } : {},
+                    body: body ? JSON.stringify(body) : undefined,
+                });
+            } catch (e) {
+                throw Object.assign(new Error('Sin conexión con el servidor. Revisa tu internet.'), { status: 0 });
             }
-          })
-          .catch(() => {
-            if (active) setAuthenticated(false);
-          })
-          .finally(() => {
-            if (active) setCheckingSession(false);
-          });
-        return () => { active = false; };
-      }, []);
-
-      async function handleLoginSubmit(e) {
-        e.preventDefault();
-        setLoginError('');
-        if (!passwordInput.trim()) {
-          setLoginError('Ingresa la contraseña.');
-          return;
+            let data = null;
+            try { data = await res.json(); } catch (e) { /* sin cuerpo JSON */ }
+            if (!res.ok) throw Object.assign(new Error((data && data.error) || 'Error del servidor (' + res.status + ')'), { status: res.status });
+            return data;
         }
-        setLoggingIn(true);
-        try {
-          const res = await fetch('/api/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ password: passwordInput })
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || 'Error al iniciar sesión.');
-          }
-          setPasswordInput('');
-          setAuthenticated(true);
-          await loadAdminData();
-        } catch (err) {
-          setLoginError(err.message || 'Credenciales inválidas.');
-        } finally {
-          setLoggingIn(false);
+
+        function isHttps(u) { try { return new URL(u).protocol === 'https:'; } catch (e) { return false; } }
+
+        function validateSettings(s) {
+            const e = {};
+            const text = (k, max) => {
+                const v = s[k].trim();
+                if (!v) e[k] = 'Es obligatorio';
+                else if (v.length > max) e[k] = 'Máximo ' + max + ' caracteres';
+            };
+            text('brandTitle', 40); text('brandSubtitle', 60); text('shippingText', 80);
+            if (!RE_YAPE.test(s.yapeNumber.trim())) e.yapeNumber = 'Debe tener 9 dígitos y empezar con 9';
+            if (!RE_WA.test(s.whatsapp.trim())) e.whatsapp = 'Debe ser 51 + 9 dígitos (ej. 51912345678)';
+            return e;
         }
-      }
 
-      async function handleLogout() {
-        try {
-          await fetch('/api/admin/logout', {
-            method: 'POST',
-            credentials: 'include'
-          });
-        } finally {
-          setAuthenticated(false);
-          setDirty(false);
-          setPerfumes([]);
-          setSettings(EMPTY_SETTINGS);
+        function validatePerfume(f) {
+            const e = {};
+            const name = f.name.trim();
+            if (!name) e.name = 'Es obligatorio'; else if (name.length > 80) e.name = 'Máximo 80 caracteres';
+            if (f.desc.trim().length > 300) e.desc = 'Máximo 300 caracteres';
+            const ps = String(f.price).trim();
+            if (!/^\d+$/.test(ps) || Number(ps) > 5000) e.price = 'Número entero entre 0 y 5000';
+            const img = f.img.trim();
+            if (!img) e.img = 'Es obligatoria';
+            else if (img.length > 500) e.img = 'Máximo 500 caracteres';
+            else if (!isHttps(img)) e.img = 'Debe empezar con https://';
+            return e;
         }
-      }
 
-      function handleSettingChange(field, value) {
-        setSettings((prev) => ({
-          ...prev,
-          [field]: value
-        }));
-        setDirty(true);
-      }
+        const hasErrors = (p) => Object.keys(validatePerfume({ ...p, price: String(p.price) })).length > 0;
 
-      function openCreateModal() {
-        setFormError('');
-        setFormState({
-          id: null,
-          name: '',
-          desc: '',
-          price: '0',
-          img: '',
-          active: true
+        function hydrate(d) {
+            const s = (d && d.settings) || {};
+            return {
+                settings: Object.fromEntries(SKEYS.map((k) => [k, String(s[k] ?? '')])),
+                perfumes: ((d && d.perfumes) || []).map((p) => ({
+                    _key: nk(),
+                    id: p.id ?? null,
+                    name: String(p.name ?? ''),
+                    desc: String(p.desc ?? ''),
+                    price: Number.isFinite(Number(p.price)) ? Math.round(Number(p.price)) : 0,
+                    img: String(p.img ?? ''),
+                    active: p.active !== false,
+                })),
+            };
+        }
+
+        const strip = (d) => ({
+            settings: Object.fromEntries(SKEYS.map((k) => [k, d.settings[k].trim()])),
+            perfumes: d.perfumes.map((p) => ({ id: p.id ?? null, name: p.name.trim(), desc: p.desc.trim(), price: p.price, img: p.img.trim(), active: p.active })),
         });
-        setModalOpen(true);
-      }
+        const snap = (d) => JSON.stringify(strip(d));
 
-      function openEditModal(perfume) {
-        setFormError('');
-        setFormState({
-          id: perfume.id,
-          name: perfume.name || '',
-          desc: perfume.desc || '',
-          price: String(Number.isInteger(Number(perfume.price)) ? Number(perfume.price) : 0),
-          img: perfume.img || '',
-          active: perfume.active !== false
-        });
-        setModalOpen(true);
-      }
-
-      function handleDuplicatePerfume(perfume) {
-        setPerfumes((prev) => {
-          const copyItem = {
-            id: null,
-            name: `${perfume.name} (Copia)`.slice(0, 80),
-            desc: (perfume.desc || '').slice(0, 300),
-            price: Number.isInteger(Number(perfume.price)) ? Number(perfume.price) : 0,
-            img: perfume.img || '',
-            active: perfume.active !== false
-          };
-          return prev.concat([copyItem]);
-        });
-        setDirty(true);
-        showToast('Perfume duplicado. Revisa el formato y guarda cambios.');
-      }
-
-      function handleToggleActive(index) {
-        setPerfumes((prev) =>
-          prev.map((item, idx) =>
-            idx === index ? { ...item, active: item.active === false } : item
-          )
-        );
-        setDirty(true);
-      }
-
-      function handleMovePerfume(index, direction) {
-        setPerfumes((prev) => {
-          const targetIndex = index + direction;
-          if (targetIndex < 0 || targetIndex >= prev.length) return prev;
-          const next = prev.slice();
-          const temp = next[index];
-          next[index] = next[targetIndex];
-          next[targetIndex] = temp;
-          return next;
-        });
-        setDirty(true);
-      }
-
-      function confirmDeletePerfume() {
-        if (!deleteTarget) return;
-        const idxToRemove = deleteTarget.index;
-        setPerfumes((prev) => prev.filter((_, idx) => idx !== idxToRemove));
-        setDeleteTarget(null);
-        setDirty(true);
-        showToast('Perfume eliminado de la lista. Guarda cambios para aplicar.');
-      }
-
-      function handlePriceInputChange(rawVal) {
-        const digitsOnly = String(rawVal || '').replace(/[^\d]/g, '');
-        setFormState((prev) => ({
-          ...prev,
-          price: digitsOnly
-        }));
-      }
-
-      function handleSaveModal(e) {
-        e.preventDefault();
-        setFormError('');
-
-        const cleanName = (formState.name || '').trim();
-        const cleanDesc = (formState.desc || '').trim();
-        const cleanImg = (formState.img || '').trim();
-        const parsedPrice = formState.price === '' ? NaN : Number(formState.price);
-
-        if (cleanName.length < 1 || cleanName.length > 80) {
-          setFormError('El nombre debe tener entre 1 y 80 caracteres.');
-          return;
-        }
-        if (cleanDesc.length > 300) {
-          setFormError('La descripción no puede superar los 300 caracteres.');
-          return;
-        }
-        if (!Number.isInteger(parsedPrice) || parsedPrice < 0 || parsedPrice > 5000) {
-          setFormError('El precio debe ser un número entero entre 0 y 5000.');
-          return;
-        }
-        if (!isValidHttpsUrl(cleanImg)) {
-          setFormError('Ingresa una URL válida que comience con https:// (máx. 500 caracteres).');
-          return;
+        /* ---------- Componentes base ---------- */
+        function Field({ label, hint, error, children }) {
+            return (
+                <label className="block">
+                    <span className="block text-xs text-zinc-300 font-bold mb-1.5">{label}</span>
+                    {children}
+                    {error && <span className="block mt-1.5 text-white text-xs font-semibold"><i className="fas fa-circle-exclamation mr-1"></i>{error}</span>}
+                    {hint && <span className="block mt-1.5 text-zinc-500 text-[11px] leading-snug">{hint}</span>}
+                </label>
+            );
         }
 
-        const nextPerfume = {
-          id: formState.id,
-          name: cleanName,
-          desc: cleanDesc,
-          price: parsedPrice,
-          img: cleanImg,
-          active: Boolean(formState.active)
-        };
-
-        setPerfumes((prev) => {
-          if (formState.id !== null && formState.id !== undefined) {
-            return prev.map((item) => (item.id === formState.id ? nextPerfume : item));
-          }
-          return prev.concat([nextPerfume]);
-        });
-
-        setDirty(true);
-        setModalOpen(false);
-        showToast('Cambios aplicados en el borrador. Pulsa Guardar cambios.');
-      }
-
-      async function handleSaveAll() {
-        const settingErrors = validateSettingsForm(settings);
-        if (Object.keys(settingErrors).length > 0) {
-          showToast('Revisa los campos de configuración antes de guardar.');
-          return;
+        function Overlay({ onClose, children }) {
+            useEffect(() => {
+                const h = (e) => { if (e.key === 'Escape') onClose(); };
+                window.addEventListener('keydown', h);
+                return () => window.removeEventListener('keydown', h);
+            }, [onClose]);
+            return <div className="fixed inset-0 z-50 bg-black/80 flex items-end sm:items-center justify-center p-3 overflow-y-auto">{children}</div>;
         }
 
-        setSaving(true);
-        try {
-          const payload = {
-            settings: {
-              brandTitle: settings.brandTitle.trim(),
-              brandSubtitle: settings.brandSubtitle.trim(),
-              shippingText: settings.shippingText.trim(),
-              yapeNumber: settings.yapeNumber.trim(),
-              whatsapp: settings.whatsapp.trim()
-            },
-            perfumes: perfumes.map((p) => ({
-              id: p.id,
-              name: (p.name || '').trim(),
-              desc: (p.desc || '').trim(),
-              price: Number.isInteger(Number(p.price)) ? Number(p.price) : 0,
-              img: (p.img || '').trim(),
-              active: p.active !== false
-            }))
-          };
-
-          const res = await fetch('/api/admin/data', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-          });
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || 'Error al guardar en GitHub.');
-          }
-
-          setSettings(data.settings);
-          setPerfumes(data.perfumes);
-          setDirty(false);
-          showToast('Cambios guardados correctamente.');
-        } catch (err) {
-          showToast(err.message || 'No se pudieron guardar los cambios.');
-        } finally {
-          setSaving(false);
-        }
-      }
-
-      const settingErrors = useMemo(() => validateSettingsForm(settings), [settings]);
-
-      const filteredEntries = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase();
-        return perfumes
-          .map((perfume, index) => ({ perfume, index }))
-          .filter(({ perfume }) => {
-            if (!q) return true;
-            const n = (perfume.name || '').toLowerCase();
-            const d = (perfume.desc || '').toLowerCase();
-            return n.includes(q) || d.includes(q);
-          });
-      }, [perfumes, searchQuery]);
-
-      if (checkingSession) {
-        return (
-          <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
-            <p className="text-sm text-zinc-300">Verificando sesión...</p>
-          </div>
-        );
-      }
-
-      if (!authenticated) {
-        return (
-          <div className="min-h-screen bg-zinc-950 text-white flex items-center justify-center p-4">
-            <div className="w-full max-w-sm bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-              <div className="mb-6">
-                <p className="text-xs uppercase tracking-widest text-zinc-400">ARENAS</p>
-                <h1 className="text-2xl font-bold text-white mt-1">Panel de Administración</h1>
-              </div>
-
-              <form onSubmit={handleLoginSubmit} className="space-y-4">
-                <div>
-                  <label htmlFor="admin-password" className="block text-xs uppercase tracking-wider text-zinc-300 mb-2">
-                    Contraseña
-                  </label>
-                  <input
-                    id="admin-password"
-                    type="password"
-                    autoComplete="current-password"
-                    value={passwordInput}
-                    onChange={(e) => setPasswordInput(e.target.value)}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                    placeholder="Ingresa tu contraseña"
-                  />
-                </div>
-
-                {loginError && (
-                  <p className="text-xs text-zinc-200 bg-zinc-950 border border-white rounded-lg p-3">
-                    {loginError}
-                  </p>
-                )}
-
-                <button
-                  type="submit"
-                  disabled={loggingIn}
-                  className="w-full bg-white text-black font-bold text-xs uppercase tracking-wider py-3 rounded-lg hover:bg-zinc-200 disabled:opacity-50 transition"
-                >
-                  {loggingIn ? 'Ingresando...' : 'Iniciar sesión'}
-                </button>
-              </form>
-
-              <div className="mt-5 pt-4 border-t border-zinc-800 flex justify-between items-center text-xs">
-                <a href="/" className="text-zinc-300 hover:text-white underline">
-                  Ver tienda
-                </a>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      const safePreviewPrice = formState.price === '' ? 0 : Number(formState.price);
-
-      return (
-        <div className="min-h-screen bg-zinc-950 text-white pb-28">
-          <header className="bg-black border-b border-zinc-800 sticky top-0 z-20">
-            <div className="max-w-6xl mx-auto px-4 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-              <div>
-                <p className="text-[11px] uppercase tracking-widest text-zinc-400">ARENAS · Panel</p>
-                <h1 className="text-xl font-bold text-white">Administración de Tienda</h1>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                {dirty && (
-                  <span className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-zinc-900 border border-white text-white">
-                    Cambios sin guardar
-                  </span>
-                )}
-                <a
-                  href="/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition"
-                >
-                  Ver tienda
-                </a>
-                <button
-                  type="button"
-                  onClick={handleLogout}
-                  className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg transition"
-                >
-                  Cerrar sesión
-                </button>
-              </div>
-            </div>
-          </header>
-
-          {toast && (
-            <div className="fixed top-20 right-4 z-50 max-w-sm bg-black border border-white text-white text-xs font-semibold px-4 py-3 rounded-lg shadow-xl">
-              {toast}
-            </div>
-          )}
-
-          <main className="max-w-6xl mx-auto px-4 py-6 space-y-8">
-            {loadingData ? (
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-8 text-center text-sm text-zinc-300">
-                Cargando catálogo y configuración...
-              </div>
-            ) : (
-              <>
-                <section className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 sm:p-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-5">
-                    <div>
-                      <h2 className="text-lg font-bold text-white">Perfumes y decants ({perfumes.length}/200)</h2>
-                      <p className="text-xs text-zinc-400 mt-0.5">
-                        El orden de la lista define cómo se muestran en la tienda.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={openCreateModal}
-                      className="w-full sm:w-auto bg-white text-black hover:bg-zinc-200 text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg transition"
-                    >
-                      <i className="fas fa-plus mr-1.5"></i>Nuevo perfume
-                    </button>
-                  </div>
-
-                  <div className="mb-5">
-                    <label htmlFor="search-perfumes" className="sr-only">Buscar perfumes</label>
-                    <input
-                      id="search-perfumes"
-                      type="text"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      placeholder="Buscar por nombre o descripción..."
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white placeholder-zinc-500 focus:outline-none focus:border-white"
-                    />
-                  </div>
-
-                  {filteredEntries.length === 0 ? (
-                    <div className="bg-zinc-950 border border-zinc-800 rounded-lg p-6 text-center text-xs text-zinc-400">
-                      No hay perfumes que coincidan con el filtro.
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      {filteredEntries.map(({ perfume, index }) => {
-                        const isActive = perfume.active !== false;
-                        return (
-                          <div
-                            key={`${perfume.id ?? 'new'}-${index}`}
-                            className="bg-zinc-950 border border-zinc-800 rounded-xl p-3.5 flex flex-col md:flex-row md:items-center justify-between gap-4"
-                          >
-                            <div className="flex items-start sm:items-center gap-3.5 min-w-0">
-                              <img
-                                src={perfume.img}
-                                alt={perfume.name}
-                                className="w-16 h-16 rounded-lg object-cover border border-zinc-800 bg-black flex-shrink-0"
-                              />
-                              <div className="min-w-0">
-                                <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="text-sm font-bold text-white truncate">{perfume.name}</h3>
-                                  <span className="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded border border-zinc-700 bg-zinc-900 text-zinc-200">
-                                    {isActive ? 'Activo' : 'Oculto'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-zinc-400 mt-1 line-clamp-2">{perfume.desc}</p>
-                                <p className="text-sm font-bold text-white mt-1">S/ {perfume.price}</p>
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap items-center gap-2 md:justify-end flex-shrink-0">
-                              <button
-                                type="button"
-                                disabled={index === 0}
-                                onClick={() => handleMovePerfume(index, -1)}
-                                title="Subir"
-                                aria-label="Subir"
-                                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 border border-zinc-700 text-white text-xs px-2.5 py-2 rounded-lg transition"
-                              >
-                                <i className="fas fa-arrow-up"></i>
-                              </button>
-                              <button
-                                type="button"
-                                disabled={index === perfumes.length - 1}
-                                onClick={() => handleMovePerfume(index, 1)}
-                                title="Bajar"
-                                aria-label="Bajar"
-                                className="bg-zinc-800 hover:bg-zinc-700 disabled:opacity-40 border border-zinc-700 text-white text-xs px-2.5 py-2 rounded-lg transition"
-                              >
-                                <i className="fas fa-arrow-down"></i>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleToggleActive(index)}
-                                className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition"
-                              >
-                                {isActive ? 'Ocultar' : 'Activar'}
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDuplicatePerfume(perfume)}
-                                className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-3 py-2 rounded-lg transition"
-                              >
-                                Duplicar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => openEditModal(perfume)}
-                                className="bg-white hover:bg-zinc-200 text-black text-xs font-bold px-3 py-2 rounded-lg transition"
-                              >
-                                Editar
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => setDeleteTarget({ index, name: perfume.name })}
-                                className="bg-zinc-950 hover:bg-zinc-900 border border-white text-white text-xs font-semibold px-3 py-2 rounded-lg transition"
-                              >
-                                Eliminar
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </section>
-
-                <section className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 sm:p-6">
-                  <h2 className="text-lg font-bold text-white mb-4">Configuración de la tienda</h2>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1.5">
-                        Título de marca (1-40)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={40}
-                        value={settings.brandTitle}
-                        onChange={(e) => handleSettingChange('brandTitle', e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                      {settingErrors.brandTitle && (
-                        <p className="text-xs text-zinc-300 mt-1">{settingErrors.brandTitle}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1.5">
-                        Subtítulo (1-60)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={60}
-                        value={settings.brandSubtitle}
-                        onChange={(e) => handleSettingChange('brandSubtitle', e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                      {settingErrors.brandSubtitle && (
-                        <p className="text-xs text-zinc-300 mt-1">{settingErrors.brandSubtitle}</p>
-                      )}
-                    </div>
-
-                    <div className="md:col-span-2">
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1.5">
-                        Texto de envío (1-80)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={80}
-                        value={settings.shippingText}
-                        onChange={(e) => handleSettingChange('shippingText', e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                      {settingErrors.shippingText && (
-                        <p className="text-xs text-zinc-300 mt-1">{settingErrors.shippingText}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1.5">
-                        Número Yape (9 dígitos, inicia con 9)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={9}
-                        value={settings.yapeNumber}
-                        onChange={(e) => handleSettingChange('yapeNumber', e.target.value.replace(/[^\d]/g, ''))}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                      {settingErrors.yapeNumber && (
-                        <p className="text-xs text-zinc-300 mt-1">{settingErrors.yapeNumber}</p>
-                      )}
-                    </div>
-
-                    <div>
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1.5">
-                        WhatsApp (formato 519XXXXXXXX)
-                      </label>
-                      <input
-                        type="text"
-                        maxLength={11}
-                        value={settings.whatsapp}
-                        onChange={(e) => handleSettingChange('whatsapp', e.target.value.replace(/[^\d]/g, ''))}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                      {settingErrors.whatsapp && (
-                        <p className="text-xs text-zinc-300 mt-1">{settingErrors.whatsapp}</p>
-                      )}
-                    </div>
-                  </div>
-                </section>
-              </>
-            )}
-          </main>
-
-          <div className="fixed bottom-0 inset-x-0 bg-black border-t border-zinc-800 z-30">
-            <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
-              <span className="text-xs text-zinc-300">
-                {dirty ? 'Tienes cambios sin guardar' : 'Todo sincronizado'}
-              </span>
-              <button
-                type="button"
-                disabled={saving || loadingData}
-                onClick={handleSaveAll}
-                className="bg-white hover:bg-zinc-200 disabled:opacity-50 text-black text-xs font-bold uppercase tracking-wider px-5 py-3 rounded-lg transition"
-              >
-                {saving ? 'Guardando...' : 'Guardar cambios'}
-              </button>
-            </div>
-          </div>
-
-          {modalOpen && (
-            <div className="fixed inset-0 bg-black/80 z-40 flex items-center justify-center p-4 overflow-y-auto">
-              <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg p-5 sm:p-6 my-auto">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-4">
-                  <h3 className="text-base font-bold text-white">
-                    {formState.id !== null ? 'Editar perfume' : 'Nuevo perfume'}
-                  </h3>
-                  <button
-                    type="button"
-                    onClick={() => setModalOpen(false)}
-                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white w-8 h-8 rounded-lg text-xs"
-                  >
-                    <i className="fas fa-times"></i>
-                  </button>
-                </div>
-
-                <form onSubmit={handleSaveModal} className="space-y-4">
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1">
-                      Nombre (1-80)
-                    </label>
-                    <input
-                      type="text"
-                      maxLength={80}
-                      value={formState.name}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, name: e.target.value }))}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white"
-                    />
-                    <p className="text-[11px] text-zinc-400 mt-1">
-                      Incluye la marca en el nombre: Lattafa, Rasasi, Afnan, Armaf, Al Haramain
-                    </p>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1">
-                      Descripción (0-300)
-                    </label>
-                    <textarea
-                      rows={3}
-                      maxLength={300}
-                      value={formState.desc}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, desc: e.target.value }))}
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1">
-                        Precio entero en S/ (0-5000)
-                      </label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={formState.price}
-                        onChange={(e) => handlePriceInputChange(e.target.value)}
-                        className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white"
-                      />
-                    </div>
-
-                    <div className="flex items-end pb-1">
-                      <label className="inline-flex items-center gap-2.5 text-xs font-semibold text-white cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={Boolean(formState.active)}
-                          onChange={(e) => setFormState((prev) => ({ ...prev, active: e.target.checked }))}
-                          className="w-4 h-4 accent-white"
-                        />
-                        <span>Activo en tienda</span>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs uppercase tracking-wider text-zinc-300 mb-1">
-                      URL de imagen HTTPS (máx. 500)
-                    </label>
-                    <input
-                      type="url"
-                      maxLength={500}
-                      value={formState.img}
-                      onChange={(e) => setFormState((prev) => ({ ...prev, img: e.target.value }))}
-                      placeholder="https://..."
-                      className="w-full bg-zinc-950 border border-zinc-800 rounded-lg px-3.5 py-2 text-sm text-white focus:outline-none focus:border-white"
-                    />
-                    {isGoogleImageUrl(formState.img) && (
-                      <p className="text-xs text-zinc-200 bg-zinc-950 border border-zinc-700 rounded-lg p-2.5 mt-2">
-                        Aviso: las URLs de google o gstatic puede dejar de funcionar. Usa un enlace directo estable.
-                      </p>
-                    )}
-
-                    {isValidHttpsUrl(formState.img) && (
-                      <div className="mt-3 bg-zinc-950 border border-zinc-800 rounded-lg p-3 flex items-center gap-3">
-                        <img
-                          src={formState.img}
-                          alt="Vista previa"
-                          className="w-16 h-16 rounded-lg object-cover border border-zinc-800 bg-black flex-shrink-0"
-                        />
-                        <div className="text-xs text-zinc-300">
-                          <p className="font-bold text-white">Vista previa</p>
-                          <p className="text-zinc-400">Precio: S/ {safePreviewPrice}</p>
+        function Confirm({ title, text, okLabel, onOk, onClose }) {
+            return (
+                <Overlay onClose={onClose}>
+                    <div className="pop bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-sm p-5 my-auto">
+                        <h3 className="text-lg font-extrabold text-white mb-2">{title}</h3>
+                        <p className="text-sm text-zinc-300 mb-5">{text}</p>
+                        <div className="flex gap-2">
+                            <button type="button" onClick={onClose} className={btnPrimary + ' flex-1'}>Cancelar</button>
+                            <button type="button" onClick={() => { onClose(); onOk(); }} className={btnOutline + ' flex-1'}>{okLabel}</button>
                         </div>
-                      </div>
-                    )}
-                  </div>
+                    </div>
+                </Overlay>
+            );
+        }
 
-                  {formError && (
-                    <p className="text-xs text-white bg-zinc-950 border border-white rounded-lg p-3">
-                      {formError}
-                    </p>
-                  )}
-
-                  <div className="flex justify-end gap-2 pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setModalOpen(false)}
-                      className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-4 py-2.5 rounded-lg"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      className="bg-white hover:bg-zinc-200 text-black text-xs font-bold uppercase tracking-wider px-4 py-2.5 rounded-lg"
-                    >
-                      Aceptar
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
-
-          {deleteTarget && (
-            <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
-              <div className="bg-zinc-900 border border-white rounded-xl w-full max-w-sm p-5">
-                <h3 className="text-base font-bold text-white">Confirmar eliminación</h3>
-                <p className="text-xs text-zinc-300 mt-2 leading-relaxed">
-                  ¿Deseas quitar <span className="font-bold text-white">{deleteTarget.name}</span> del catálogo?
-                </p>
-                <div className="flex justify-end gap-2 mt-5">
-                  <button
-                    type="button"
-                    onClick={() => setDeleteTarget(null)}
-                    className="bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-white text-xs font-semibold px-3.5 py-2 rounded-lg"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="button"
-                    onClick={confirmDeletePerfume}
-                    className="bg-zinc-950 hover:bg-zinc-800 border border-white text-white text-xs font-bold px-3.5 py-2 rounded-lg"
-                  >
-                    Eliminar
-                  </button>
+        function Login({ enabled, expired, onDone }) {
+            const [pw, setPw] = useState('');
+            const [busy, setBusy] = useState(false);
+            const [err, setErr] = useState('');
+            const submit = async (ev) => {
+                ev.preventDefault();
+                if (!pw) return setErr('Escribe tu contraseña.');
+                setBusy(true); setErr('');
+                try { await api('POST', '/api/admin/login', { password: pw }); setPw(''); onDone(); }
+                catch (ex) { setErr(ex.message); setBusy(false); }
+            };
+            return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <form onSubmit={submit} className="pop bg-zinc-900 border border-zinc-800 rounded-2xl p-6 sm:p-8 w-full max-w-sm shadow-2xl">
+                        <h1 className="text-3xl font-black tracking-[0.2em] text-white text-center">ARENAS</h1>
+                        <p className="text-zinc-400 text-sm text-center mt-1 mb-6">Panel de administración</p>
+                        {expired && <p className="text-xs text-zinc-200 border border-zinc-700 rounded-xl p-3 mb-4"><i className="fas fa-clock mr-1.5"></i>Tu sesión expiró. Ingresa de nuevo: tus cambios sin guardar se conservan.</p>}
+                        {!enabled && <p className="text-xs text-white border border-white rounded-xl p-3 mb-4"><i className="fas fa-triangle-exclamation mr-1.5"></i>El panel no está configurado en el servidor (faltan ADMIN_PASSWORD o SESSION_SECRET).</p>}
+                        <Field label="Contraseña" error={err}>
+                            <input type="password" autoComplete="current-password" autoFocus value={pw} onChange={(e) => setPw(e.target.value)} placeholder="Tu contraseña" className={inp(err)} />
+                        </Field>
+                        <button type="submit" disabled={busy || !enabled} className={btnPrimary + ' w-full mt-5'}>
+                            {busy && <i className="fas fa-spinner fa-spin"></i>}{busy ? 'Entrando...' : 'Entrar al panel'}
+                        </button>
+                        <a href="/" className="block text-center text-xs text-zinc-400 hover:text-white mt-4 underline">Ir a la tienda</a>
+                    </form>
                 </div>
-              </div>
-            </div>
-          )}
-        </div>
-      );
-    }
+            );
+        }
 
-    const root = ReactDOM.createRoot(document.getElementById('root'));
-    root.render(<AdminApp />);
-  </script>
+        function ProductModal({ mode, initial, onSave, onClose }) {
+            const [f, setF] = useState({ name: initial.name, desc: initial.desc, price: String(initial.price), img: initial.img, active: initial.active });
+            const [touched, setTouched] = useState(false);
+            const [imgBad, setImgBad] = useState(false);
+            const all = validatePerfume(f);
+            const e = touched ? all : {};
+            const set = (k, v) => setF((p) => ({ ...p, [k]: v }));
+            const url = f.img.trim();
+            useEffect(() => { setImgBad(false); }, [url]);
+            const submit = (ev) => {
+                ev.preventDefault();
+                setTouched(true);
+                if (Object.keys(all).length) return;
+                onSave({ name: f.name.trim(), desc: f.desc.trim(), price: Number(f.price), img: url, active: f.active });
+            };
+            const title = mode === 'edit' ? 'Editar perfume' : mode === 'dup' ? 'Duplicar perfume' : 'Nuevo perfume';
+            return (
+                <Overlay onClose={onClose}>
+                    <form onSubmit={submit} noValidate className="pop bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg p-4 sm:p-6 my-auto space-y-4">
+                        <div className="flex items-center justify-between">
+                            <h3 className="text-lg font-extrabold text-white">{title}</h3>
+                            <button type="button" onClick={onClose} className="text-zinc-400 hover:text-white p-1" aria-label="Cerrar"><i className="fas fa-xmark text-lg"></i></button>
+                        </div>
+                        <Field label="Nombre" error={e.name} hint="Incluye la marca en el nombre: Lattafa, Rasasi, Afnan, Armaf, Al Haramain. Para decants: Lattafa Khamrah - Decant 10 ml.">
+                            <input className={inp(e.name)} value={f.name} onChange={(ev) => set('name', ev.target.value)} placeholder="Ej. Lattafa Khamrah 100 ml" />
+                        </Field>
+                        <Field label="Descripción" error={e.desc} hint={f.desc.length + '/300 caracteres'}>
+                            <textarea rows="3" className={inp(e.desc)} value={f.desc} onChange={(ev) => set('desc', ev.target.value)} placeholder="Notas, intensidad, ocasión..." />
+                        </Field>
+                        <Field label="Precio en soles (S/)" error={e.price}>
+                            <input className={inp(e.price)} inputMode="numeric" value={f.price} onChange={(ev) => set('price', ev.target.value.replace(/\D/g, ''))} placeholder="Ej. 135" />
+                        </Field>
+                        <div className="flex gap-3 items-start">
+                            <div className="w-24 h-24 rounded-xl border border-zinc-800 bg-black overflow-hidden flex items-center justify-center flex-shrink-0 text-zinc-600">
+                                {isHttps(url) && !imgBad
+                                    ? <img src={url} alt="Vista previa" className="w-full h-full object-cover" onError={() => setImgBad(true)} />
+                                    : <i className="fas fa-image text-2xl"></i>}
+                            </div>
+                            <div className="flex-grow min-w-0">
+                                <Field label="URL de la imagen" error={e.img}>
+                                    <input className={inp(e.img)} value={f.img} onChange={(ev) => set('img', ev.target.value)} placeholder="https://..." />
+                                </Field>
+                            </div>
+                        </div>
+                        {isHttps(url) && imgBad && <p className="text-xs text-white"><i className="fas fa-triangle-exclamation mr-1.5"></i>No se pudo cargar la imagen con esa URL.</p>}
+                        {/(gstatic|google)\./i.test(url) && <p className="text-xs text-zinc-300"><i className="fas fa-triangle-exclamation mr-1.5"></i>Las imágenes de Google (gstatic) pueden dejar de funcionar sin aviso. Es más seguro usar una imagen alojada en tu propio repo, Imgur o Cloudinary.</p>}
+                        <label className="flex items-center gap-3 cursor-pointer">
+                            <input type="checkbox" className="w-5 h-5 accent-white" checked={f.active} onChange={(ev) => set('active', ev.target.checked)} />
+                            <span className="text-sm text-zinc-200">Visible en la tienda</span>
+                        </label>
+                        <p className="text-[11px] text-zinc-500">Los cambios se publican al pulsar «Guardar cambios» en la barra inferior.</p>
+                        <div className="flex gap-2 pt-1">
+                            <button type="button" onClick={onClose} className={btnGhost + ' flex-1'}>Cancelar</button>
+                            <button type="submit" className={btnPrimary + ' flex-1'}>{mode === 'edit' ? 'Aplicar cambios' : 'Agregar perfume'}</button>
+                        </div>
+                    </form>
+                </Overlay>
+            );
+        }
+
+        function Row({ p, index, total, canMove, onEdit, onToggle, onDup, onMove, onDelete }) {
+            return (
+                <div className={'bg-zinc-900 border border-zinc-800 rounded-2xl p-3 sm:p-4 ' + (p.active ? '' : 'opacity-60')}>
+                    <div className="flex gap-3">
+                        <img src={p.img} alt="" className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover border border-zinc-800 bg-black flex-shrink-0" onError={(ev) => { ev.currentTarget.style.opacity = 0; }} />
+                        <div className="min-w-0 flex-grow">
+                            <div className="flex items-start justify-between gap-2">
+                                <h3 className="font-bold text-sm text-white break-words">{p.name || '(sin nombre)'}</h3>
+                                <span className="text-white font-extrabold text-sm whitespace-nowrap">S/ {p.price}.00</span>
+                            </div>
+                            <p className="text-zinc-400 text-xs mt-1 line-clamp-2">{p.desc}</p>
+                            <div className="mt-1.5 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+                                <span className="text-zinc-500">#{index + 1}</span>
+                                {!p.active && <span className="border border-zinc-600 text-zinc-300 rounded-full px-2 py-0.5">Oculto</span>}
+                                {hasErrors(p) && <span className="border border-white text-white rounded-full px-2 py-0.5">Revisar datos</span>}
+                            </div>
+                        </div>
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-zinc-800 flex flex-wrap items-center gap-2">
+                        <button type="button" onClick={() => onEdit(p)} className={btnGhost + ' !py-2'}><i className="fas fa-pen"></i>Editar</button>
+                        <button type="button" className={iconBtn} title={p.active ? 'Ocultar en la tienda' : 'Mostrar en la tienda'} aria-label={p.active ? 'Ocultar' : 'Mostrar'} onClick={() => onToggle(p._key)}><i className={'fas ' + (p.active ? 'fa-eye' : 'fa-eye-slash')}></i></button>
+                        <button type="button" className={iconBtn} title="Duplicar (útil para decants)" aria-label="Duplicar" onClick={() => onDup(p)}><i className="fas fa-copy"></i></button>
+                        <button type="button" className={iconBtn} title="Subir" aria-label="Subir" disabled={!canMove || index === 0} onClick={() => onMove(p._key, -1)}><i className="fas fa-arrow-up"></i></button>
+                        <button type="button" className={iconBtn} title="Bajar" aria-label="Bajar" disabled={!canMove || index === total - 1} onClick={() => onMove(p._key, 1)}><i className="fas fa-arrow-down"></i></button>
+                        <button type="button" className={iconBtn + ' !bg-transparent !border-white ml-auto'} title="Eliminar" aria-label="Eliminar" onClick={() => onDelete(p)}><i className="fas fa-trash-can"></i></button>
+                    </div>
+                </div>
+            );
+        }
+
+        const FIELDS = [
+            ['brandTitle', 'Título de la tienda', 'Ej. ARENAS', 'Máximo 40 caracteres.'],
+            ['brandSubtitle', 'Subtítulo', 'Ej. Perfumes Árabes & Decants', 'Máximo 60 caracteres.'],
+            ['shippingText', 'Texto de envío (barra superior)', 'Ej. Delivery en Lima S/ 12.00', 'Máximo 80 caracteres. El costo real del delivery (S/ 12.00) está fijo en index.html.'],
+            ['whatsapp', 'WhatsApp de contacto', '51XXXXXXXXX', 'Solo números, con código de país: 51 + 9 dígitos.'],
+            ['yapeNumber', 'Número de Yape / Plin', '9XXXXXXXX', '9 dígitos, empieza con 9.'],
+        ];
+
+        function SettingsForm({ s, onChange }) {
+            const errs = validateSettings(s);
+            return (
+                <section className="bg-zinc-900 border border-zinc-800 rounded-2xl p-4 sm:p-6 space-y-4">
+                    <h2 className="text-lg font-extrabold flex items-center gap-2"><i className="fas fa-sliders"></i>Configuración de la tienda</h2>
+                    {FIELDS.map(([k, label, ph, hint]) => (
+                        <Field key={k} label={label} hint={hint} error={errs[k]}>
+                            <input className={inp(errs[k])} value={s[k]} placeholder={ph} inputMode={k === 'whatsapp' || k === 'yapeNumber' ? 'numeric' : 'text'}
+                                onChange={(ev) => onChange(k, k === 'whatsapp' || k === 'yapeNumber' ? ev.target.value.replace(/\D/g, '') : ev.target.value)} />
+                        </Field>
+                    ))}
+                </section>
+            );
+        }
+
+        /* ---------- App ---------- */
+        function App() {
+            const [phase, setPhase] = useState('boot'); // boot | login | ready | error
+            const [enabled, setEnabled] = useState(true);
+            const [expired, setExpired] = useState(false);
+            const [draft, setDraft] = useState(null);
+            const [saved, setSaved] = useState('');
+            const [errMsg, setErrMsg] = useState('');
+            const [tab, setTab] = useState('productos');
+            const [search, setSearch] = useState('');
+            const [modal, setModal] = useState(null);
+            const [confirm, setConfirm] = useState(null);
+            const [saving, setSaving] = useState(false);
+            const [toasts, setToasts] = useState([]);
+
+            const toast = useCallback((msg, type) => {
+                const id = ++toastSeq;
+                setToasts((t) => t.concat([{ id, msg, type: type || 'ok' }]));
+                setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 4000);
+            }, []);
+
+            const dirty = useMemo(() => !!draft && snap(draft) !== saved, [draft, saved]);
+            const sessionLost = useCallback(() => { setExpired(true); setPhase('login'); }, []);
+
+            const load = useCallback(async () => {
+                setPhase('boot');
+                try {
+                    const d = hydrate(await api('GET', '/api/admin/data'));
+                    setDraft(d); setSaved(snap(d)); setPhase('ready');
+                } catch (e) {
+                    if (e.status === 401) return sessionLost();
+                    setErrMsg(e.message); setPhase('error');
+                }
+            }, [sessionLost]);
+
+            useEffect(() => {
+                api('GET', '/api/admin/me')
+                    .then((r) => { setEnabled(r.enabled !== false); if (r.authenticated) load(); else setPhase('login'); })
+                    .catch(() => setPhase('login'));
+            }, [load]);
+
+            useEffect(() => {
+                if (!dirty) return;
+                const h = (e) => { e.preventDefault(); e.returnValue = ''; };
+                window.addEventListener('beforeunload', h);
+                return () => window.removeEventListener('beforeunload', h);
+            }, [dirty]);
+
+            const onLogin = () => { setExpired(false); if (draft) setPhase('ready'); else load(); };
+
+            async function doLogout() {
+                try { await api('POST', '/api/admin/logout'); } catch (e) { /* se cierra igual */ }
+                setDraft(null); setSaved(''); setExpired(false); setPhase('login');
+            }
+            const askLogout = () => dirty
+                ? setConfirm({ title: 'Cerrar sesión', text: 'Tienes cambios sin guardar. Si cierras sesión se perderán.', okLabel: 'Cerrar sesión', onOk: doLogout })
+                : doLogout();
+
+            async function save() {
+                if (Object.keys(validateSettings(draft.settings)).length) { setTab('config'); return toast('Revisa los datos de la configuración.', 'err'); }
+                const bad = draft.perfumes.findIndex(hasErrors);
+                if (bad >= 0) { setTab('productos'); return toast('Revisa el perfume #' + (bad + 1) + ': ' + (draft.perfumes[bad].name || 'sin nombre'), 'err'); }
+                setSaving(true);
+                try {
+                    const r = await api('PUT', '/api/admin/data', strip(draft));
+                    const d = hydrate(r.data);
+                    setDraft(d); setSaved(snap(d));
+                    toast('Cambios guardados. La tienda se actualiza en unos 30 segundos.');
+                } catch (e) {
+                    if (e.status === 401) sessionLost(); else toast(e.message, 'err');
+                } finally { setSaving(false); }
+            }
+
+            /* Operaciones sobre productos (siempre inmutables) */
+            const setPerfumes = (fn) => setDraft((d) => ({ ...d, perfumes: fn(d.perfumes) }));
+            const setSetting = (k, v) => setDraft((d) => ({ ...d, settings: { ...d.settings, [k]: v } }));
+            const toggleActive = (key) => setPerfumes((ps) => ps.map((p) => (p._key === key ? { ...p, active: !p.active } : p)));
+            const move = (key, dir) => setPerfumes((ps) => {
+                const i = ps.findIndex((p) => p._key === key);
+                const j = i + dir;
+                if (i < 0 || j < 0 || j >= ps.length) return ps;
+                const c = ps.slice();
+                [c[i], c[j]] = [c[j], c[i]];
+                return c;
+            });
+            const askDelete = (p) => setConfirm({
+                title: 'Eliminar perfume',
+                text: '«' + (p.name || 'Sin nombre') + '» se quitará del catálogo cuando guardes los cambios.',
+                okLabel: 'Eliminar',
+                onOk: () => { setPerfumes((ps) => ps.filter((x) => x._key !== p._key)); toast('Perfume eliminado. Guarda los cambios para publicarlo.'); },
+            });
+            const limitOk = () => draft.perfumes.length < 200 || (toast('Máximo 200 perfumes.', 'err'), false);
+            const openNew = () => limitOk() && setModal({ mode: 'new', initial: { name: '', desc: '', price: '', img: '', active: true } });
+            const openEdit = (p) => setModal({ mode: 'edit', key: p._key, initial: p });
+            const openDup = (p) => limitOk() && setModal({ mode: 'dup', key: p._key, initial: { ...p, name: (p.name + ' (copia)').slice(0, 80) } });
+            const applyModal = (vals) => {
+                const m = modal;
+                setPerfumes((ps) => {
+                    if (m.mode === 'edit') return ps.map((p) => (p._key === m.key ? { ...p, ...vals } : p));
+                    const item = { _key: nk(), id: null, ...vals };
+                    if (m.mode === 'dup') { const c = ps.slice(); c.splice(ps.findIndex((p) => p._key === m.key) + 1, 0, item); return c; }
+                    return ps.concat([item]);
+                });
+                setModal(null);
+            };
+
+            const toastsEl = (
+                <div className="fixed top-3 inset-x-0 z-[60] flex flex-col items-center gap-2 px-3 pointer-events-none">
+                    {toasts.map((t) => (
+                        <div key={t.id} className={'pop pointer-events-auto max-w-md w-full flex items-start gap-2.5 px-4 py-3 rounded-xl text-sm font-semibold shadow-2xl ' + (t.type === 'err' ? 'bg-zinc-900 border border-white text-white' : 'bg-white text-zinc-950')}>
+                            <i className={'fas mt-0.5 ' + (t.type === 'err' ? 'fa-circle-exclamation' : 'fa-circle-check')}></i>
+                            <span>{t.msg}</span>
+                        </div>
+                    ))}
+                </div>
+            );
+
+            if (phase === 'boot') return <div className="min-h-screen flex flex-col items-center justify-center gap-3 text-zinc-300"><i className="fas fa-spinner fa-spin text-3xl"></i><p className="text-sm">Cargando panel...</p></div>;
+            if (phase === 'login') return <>{toastsEl}<Login enabled={enabled} expired={expired} onDone={onLogin} /></>;
+            if (phase === 'error') return (
+                <div className="min-h-screen flex items-center justify-center p-4">
+                    <div className="max-w-md w-full bg-zinc-900 border border-zinc-800 rounded-2xl p-6 text-center">
+                        <i className="fas fa-triangle-exclamation text-3xl mb-3"></i>
+                        <p className="font-bold mb-2">No se pudieron cargar los datos</p>
+                        <p className="text-sm text-zinc-400 mb-5">{errMsg}</p>
+                        <div className="flex gap-2 justify-center">
+                            <button className={btnPrimary} onClick={load}>Reintentar</button>
+                            <button className={btnGhost} onClick={doLogout}>Cerrar sesión</button>
+                        </div>
+                    </div>
+                </div>
+            );
+
+            const q = search.trim().toLowerCase();
+            const list = draft.perfumes.filter((p) => !q || p.name.toLowerCase().includes(q) || p.desc.toLowerCase().includes(q));
+            const tabCls = (on) => BTN + 'flex-1 ' + (on ? 'bg-white text-zinc-950' : 'bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white');
+
+            return (
+                <div className="min-h-screen pb-28">
+                    {toastsEl}
+                    <header className="sticky top-0 z-30 bg-black border-b border-zinc-800">
+                        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                            <div>
+                                <h1 className="text-xl font-black tracking-[0.2em] text-white leading-none">ARENAS</h1>
+                                <p className="text-[11px] text-zinc-400 mt-1">Panel de administración</p>
+                            </div>
+                            <div className="flex gap-2">
+                                <a href="/" target="_blank" rel="noopener" className={btnGhost + ' !px-3 !py-2.5'}><i className="fas fa-arrow-up-right-from-square"></i><span className="hidden sm:inline">Ver tienda</span></a>
+                                <button type="button" onClick={askLogout} className={btnGhost + ' !px-3 !py-2.5'}><i className="fas fa-right-from-bracket"></i><span className="hidden sm:inline">Cerrar sesión</span></button>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="max-w-4xl mx-auto px-4 py-5 space-y-4">
+                        <div className="flex gap-2">
+                            <button type="button" className={tabCls(tab === 'productos')} onClick={() => setTab('productos')}><i className="fas fa-wine-bottle"></i>Productos ({draft.perfumes.length})</button>
+                            <button type="button" className={tabCls(tab === 'config')} onClick={() => setTab('config')}><i className="fas fa-sliders"></i>Configuración</button>
+                        </div>
+
+                        {tab === 'config' ? <SettingsForm s={draft.settings} onChange={setSetting} /> : (
+                            <>
+                                <div className="flex gap-2">
+                                    <div className="relative flex-grow">
+                                        <i className="fas fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-500 text-sm"></i>
+                                        <input className={inp(false) + ' !pl-10 !pr-9'} placeholder="Buscar por nombre o descripción" value={search} onChange={(e) => setSearch(e.target.value)} />
+                                        {search && <button type="button" aria-label="Limpiar búsqueda" onClick={() => setSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"><i className="fas fa-xmark"></i></button>}
+                                    </div>
+                                    <button type="button" onClick={openNew} className={btnPrimary + ' flex-shrink-0'}><i className="fas fa-plus"></i><span className="hidden sm:inline">Nuevo perfume</span></button>
+                                </div>
+                                <p className="text-[11px] text-zinc-500 leading-snug">
+                                    Para decants crea un producto por tamaño (5, 10 y 15 ml) con el botón Duplicar. El orden de la lista es el orden en la tienda{q ? ' (limpia la búsqueda para reordenar)' : ''}.
+                                </p>
+                                {list.length === 0 ? (
+                                    <div className="text-center py-14 text-zinc-400 bg-zinc-900 border border-zinc-800 rounded-2xl">
+                                        <i className="fas fa-wine-bottle text-4xl mb-3 text-zinc-600"></i>
+                                        <p className="text-sm">{q ? 'Ningún perfume coincide con tu búsqueda.' : 'Aún no hay perfumes. Agrega el primero con «Nuevo perfume».'}</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {list.map((p) => (
+                                            <Row key={p._key} p={p} index={draft.perfumes.indexOf(p)} total={draft.perfumes.length} canMove={!q}
+                                                onEdit={openEdit} onToggle={toggleActive} onDup={openDup} onMove={move} onDelete={askDelete} />
+                                        ))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </main>
+
+                    <div className="fixed bottom-0 inset-x-0 z-40 bg-black/95 border-t border-zinc-800">
+                        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-3">
+                            <p className="text-xs flex items-center gap-2">
+                                {dirty
+                                    ? <><span className="w-2 h-2 rounded-full bg-white animate-pulse"></span><span className="text-white font-semibold">Cambios sin guardar</span></>
+                                    : <><i className="fas fa-check text-zinc-500"></i><span className="text-zinc-400">Todo guardado</span></>}
+                            </p>
+                            <button type="button" onClick={save} disabled={!dirty || saving} className={btnPrimary}>
+                                {saving && <i className="fas fa-spinner fa-spin"></i>}{saving ? 'Guardando...' : 'Guardar cambios'}
+                            </button>
+                        </div>
+                    </div>
+
+                    {modal && <ProductModal mode={modal.mode} initial={modal.initial} onSave={applyModal} onClose={() => setModal(null)} />}
+                    {confirm && <Confirm {...confirm} onClose={() => setConfirm(null)} />}
+                </div>
+            );
+        }
+
+        ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+    </script>
 </body>
 </html>
