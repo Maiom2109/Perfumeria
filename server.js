@@ -29,9 +29,12 @@ const CDN = ['https://cdn.tailwindcss.com', 'https://unpkg.com', 'https://cdnjs.
 const DEFAULT_SETTINGS = {
   brandTitle: 'ARENAS',
   brandSubtitle: 'Perfumes Árabes & Decants',
+  splashSubtitle: 'perfumería árabe',
+  brandLogoImg: '',
   heroTitle: 'Perfumes árabes originales y decants en Lima',
   heroSubtitle: 'Fragancias originales con garantía, decants de 5, 10 y 15 ml. Pago por Yape o Plin y envíos seguros.',
   heroCtaText: 'Ver colección',
+  brandTabs: 'Lattafa, Rasasi, Afnan, Armaf, Al Haramain',
   shippingText: 'Delivery en Lima S/ 12.00',
   yapeNumber: '',
   yapeQrImg: '',
@@ -43,6 +46,14 @@ const DEFAULT_SETTINGS = {
   provinceShippingText: 'Envío a provincia (pago en destino al recibir)',
   reservationEnabled: true,
   reservationPerItem: 20,
+  faq1Q: '¿Los perfumes árabes son 100% originales?',
+  faq1A: 'Sí, trabajamos exclusivamente con perfumes árabes originales de marcas reconocidas como Lattafa, Rasasi, Afnan, Armaf y Al Haramain con garantía.',
+  faq2Q: '¿Cómo se realizan los pagos?',
+  faq2A: 'Aceptamos pagos rápidos y seguros mediante Yape y Plin directo al número oficial de la tienda o escaneando nuestro QR.',
+  faq3Q: '¿Cómo funcionan los envíos a Lima y Provincia?',
+  faq3A: 'Realizamos entregas en Lima y envíos a todo el Perú por agencia (Shalom / Olva) con pago en destino.',
+  faq4Q: '¿Puedo separar un perfume con adelanto?',
+  faq4A: 'Sí, puedes separar cada perfume con el monto indicado en la boleta y cancelar la diferencia al momento de la entrega o antes del despacho.',
 };
 
 class HttpError extends Error {
@@ -53,8 +64,8 @@ class HttpError extends Error {
 }
 
 /* ===================== Almacén temporal de comprobantes ===================== */
-const PROOFS = new Map(); // id -> { buf, type, exp }
-const PROOF_TTL_MS = 48 * 60 * 60 * 1000; // 48 horas
+const PROOFS = new Map();
+const PROOF_TTL_MS = 48 * 60 * 60 * 1000;
 const MAX_PROOFS = 300;
 
 function cleanupProofs() {
@@ -104,14 +115,14 @@ const httpsUrl = z
     }
   }, 'debe ser una URL que empiece con https://');
 
-const qrImageField = z
+const imageDataOrUrlField = z
   .string()
   .trim()
   .max(250000)
   .default('')
   .refine((v) => {
     if (!v) return true;
-    if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) return true;
+    if (/^data:image\/(png|jpeg|jpg|webp|svg\+xml);base64,[A-Za-z0-9+/=]+$/.test(v)) return true;
     try {
       return v.length <= 500 && new URL(v).protocol === 'https:';
     } catch (e) {
@@ -122,12 +133,15 @@ const qrImageField = z
 const settingsSchema = z.object({
   brandTitle: z.string().trim().min(1).max(40),
   brandSubtitle: z.string().trim().min(1).max(60),
+  splashSubtitle: z.string().trim().min(1).max(50).default(DEFAULT_SETTINGS.splashSubtitle),
+  brandLogoImg: imageDataOrUrlField,
   heroTitle: z.string().trim().min(1).max(90).default(DEFAULT_SETTINGS.heroTitle),
   heroSubtitle: z.string().trim().min(1).max(180).default(DEFAULT_SETTINGS.heroSubtitle),
   heroCtaText: z.string().trim().min(1).max(30).default(DEFAULT_SETTINGS.heroCtaText),
+  brandTabs: z.string().trim().max(250).default(DEFAULT_SETTINGS.brandTabs),
   shippingText: z.string().trim().min(1).max(80),
   yapeNumber: z.string().trim().regex(/^9\d{8}$/, 'debe tener 9 dígitos y empezar con 9'),
-  yapeQrImg: qrImageField,
+  yapeQrImg: imageDataOrUrlField,
   whatsapp: z.string().trim().regex(/^51\d{9}$/, 'debe ser 51 + 9 dígitos (solo números)'),
   limaShippingEnabled: z.boolean().default(true),
   limaShippingCost: z.number().int().min(0).max(200).default(12),
@@ -136,6 +150,14 @@ const settingsSchema = z.object({
   provinceShippingText: z.string().trim().min(1).max(100).default(DEFAULT_SETTINGS.provinceShippingText),
   reservationEnabled: z.boolean().default(true),
   reservationPerItem: z.number().int().min(1).max(500).default(20),
+  faq1Q: z.string().trim().max(120).default(DEFAULT_SETTINGS.faq1Q),
+  faq1A: z.string().trim().max(400).default(DEFAULT_SETTINGS.faq1A),
+  faq2Q: z.string().trim().max(120).default(DEFAULT_SETTINGS.faq2Q),
+  faq2A: z.string().trim().max(400).default(DEFAULT_SETTINGS.faq2A),
+  faq3Q: z.string().trim().max(120).default(DEFAULT_SETTINGS.faq3Q),
+  faq3A: z.string().trim().max(400).default(DEFAULT_SETTINGS.faq3A),
+  faq4Q: z.string().trim().max(120).default(DEFAULT_SETTINGS.faq4Q),
+  faq4A: z.string().trim().max(400).default(DEFAULT_SETTINGS.faq4A),
 });
 
 const perfumeSchema = z.object({
@@ -162,9 +184,10 @@ const proofUploadSchema = z.object({
 
 const LABELS = {
   settings: 'Configuración', perfumes: 'Perfumes', brandTitle: 'Título', brandSubtitle: 'Subtítulo',
+  splashSubtitle: 'Subtítulo intro', brandLogoImg: 'Logo de la tienda',
   heroTitle: 'Título portada', heroSubtitle: 'Subtítulo portada', heroCtaText: 'Botón portada',
-  shippingText: 'Texto de envío', yapeNumber: 'Yape', yapeQrImg: 'Imagen QR de Yape', whatsapp: 'WhatsApp',
-  limaShippingCost: 'Costo envío Lima', provinceShippingText: 'Texto provincia',
+  brandTabs: 'Marcas', shippingText: 'Texto de envío', yapeNumber: 'Yape', yapeQrImg: 'Imagen QR de Yape',
+  whatsapp: 'WhatsApp', limaShippingCost: 'Costo envío Lima', provinceShippingText: 'Texto provincia',
   reservationPerItem: 'Monto separación', name: 'Nombre', desc: 'Descripción', price: 'Precio',
   img: 'Imagen', active: 'Activo', id: 'ID',
 };
@@ -414,7 +437,7 @@ app.use(
   })
 );
 app.use(compression());
-app.use(express.json({ limit: '500kb' }));
+app.use(express.json({ limit: '700kb' }));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
@@ -596,7 +619,7 @@ app.use((err, req, res, next) => {
     message = 'El cuerpo de la petición no es un JSON válido.';
   } else if (err.type === 'entity.too.large') {
     status = 413;
-    message = 'La petición es demasiado grande (máximo 500 kb).';
+    message = 'La petición es demasiado grande.';
   } else {
     console.error('Error no controlado:', err.message);
   }
