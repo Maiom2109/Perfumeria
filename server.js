@@ -102,18 +102,19 @@ z.setErrorMap((issue, ctx) => {
   }
 });
 
-const httpsUrl = z
+const perfumeImageField = z
   .string()
   .trim()
-  .min(1)
-  .max(500)
+  .min(1, 'es obligatoria')
+  .max(250000)
   .refine((v) => {
+    if (/^data:image\/(png|jpeg|jpg|webp);base64,[A-Za-z0-9+/=]+$/.test(v)) return true;
     try {
-      return new URL(v).protocol === 'https:';
+      return v.length <= 500 && new URL(v).protocol === 'https:';
     } catch (e) {
       return false;
     }
-  }, 'debe ser una URL que empiece con https://');
+  }, 'debe ser una foto válida o una URL https://');
 
 const imageDataOrUrlField = z
   .string()
@@ -165,7 +166,7 @@ const perfumeSchema = z.object({
   name: z.string().trim().min(1).max(80),
   desc: z.string().trim().max(300).default(''),
   price: z.number().int().min(0).max(5000),
-  img: httpsUrl,
+  img: perfumeImageField,
   active: z.boolean().default(true),
 });
 
@@ -268,7 +269,7 @@ async function ghFetch(url, options = {}) {
         'X-GitHub-Api-Version': '2022-11-28',
         ...(options.headers || {}),
       },
-      signal: AbortSignal.timeout(10000),
+      signal: AbortSignal.timeout(15000),
     });
   } catch (e) {
     throw new HttpError(502, 'No se pudo conectar con GitHub. Intenta de nuevo en unos segundos.');
@@ -437,7 +438,7 @@ app.use(
   })
 );
 app.use(compression());
-app.use(express.json({ limit: '700kb' }));
+app.use(express.json({ limit: '6mb' }));
 
 app.get('/healthz', (req, res) => res.type('text').send('ok'));
 
